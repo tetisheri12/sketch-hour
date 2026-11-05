@@ -309,6 +309,25 @@
           </div>
         </div>
         <div class="st-hint" id="stHint" hidden></div>
+        <div class="st-values" id="stValues" hidden>
+          <div class="st-vhead"><b>Values</b><span class="st-row"><button type="button" class="linkish" id="stLookReset">Reset</button><button type="button" class="ib sm" id="stValuesClose" aria-label="Close values"><svg class="i"><use href="#i-close"/></svg></button></span></div>
+          <div class="seg" id="stStepsSeg" role="group" aria-label="Value groups">
+            <button type="button" data-s="0">All</button>
+            <button type="button" data-s="5">5</button>
+            <button type="button" data-s="3">3</button>
+            <button type="button" data-s="2">2</button>
+          </div>
+          <label class="st-range" id="stSplitRow"><span>Shadow</span><input type="range" id="stSplit" min="-50" max="50" value="0"><span id="stSplitV">0</span></label>
+          <label class="st-range"><span>Brightness</span><input type="range" id="stBright" min="-50" max="50" value="0"><span id="stBrightV">0</span></label>
+          <label class="st-range"><span>Contrast</span><input type="range" id="stContrast" min="-50" max="50" value="0"><span id="stContrastV">0</span></label>
+          <label class="st-range"><span>Squint</span><input type="range" id="stBlur" min="0" max="100" value="0"><span id="stBlurV">0</span></label>
+          <p class="st-vnote">These only change how the reference looks here. Your references stay as they are.</p>
+        </div>
+        <div class="st-tools" id="stTools" hidden>
+          <button type="button" class="ib" id="stGrayBtn" aria-pressed="false" aria-label="Grayscale (G)" title="Grayscale (G)"><svg class="i"><use href="#i-gray"/></svg></button>
+          <button type="button" class="ib" id="stMirrorBtn" aria-pressed="false" aria-label="Mirror (F)" title="Mirror (F)"><svg class="i"><use href="#i-flip"/></svg></button>
+          <button type="button" class="ib txt" id="stValuesBtn" aria-pressed="false" aria-expanded="false" aria-controls="stValues"><svg class="i"><use href="#i-values"/></svg><span>Values</span></button>
+        </div>
       </div>
 
       <aside class="card st-panel" aria-label="Studio controls">

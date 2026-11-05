@@ -1510,7 +1510,8 @@ const ST = Object.assign({
   xf: { s: 1, r: 0, tx: 0, ty: 0 }, cmpKey: '',
   view: 'lines', opacity: 0.9, strength: 50, lineColor: 'red', refFade: 1,
   peek: false, flicker: false, flickOn: true, align: null, corners: null,
-  L: null, drag: null
+  L: null, drag: null,
+  look: { gray: false, mirror: false, steps: 0, split: 0, bright: 0, contrast: 0, blur: 0 }, lookBlocked: false, refVer: 0, cropVer: 0
 }, (() => {
   const s = LS.get('sketchhour.studio', {});
   const keep = {};
@@ -1534,6 +1535,7 @@ async function stLoadRef(src, name, remote) {
   if (!img || !img.naturalWidth) { toast("That image couldn't be opened. Try a JPG, PNG or WebP."); return; }
   ST.ref = { img, w: img.naturalWidth, h: img.naturalHeight, clean };
   ST.refName = (name || 'Reference').slice(0, 80);
+  ST.refVer++; ST.lookBlocked = false;
   ST.fixed = false; ST.crop = null; ST.align = null; ST.corners = null;
   ST.ratio = 'orig'; ST.landscape = ST.ref.w > ST.ref.h;
   ST.frame = { x: 0, y: 0, w: ST.ref.w, h: ST.ref.h };
@@ -1708,7 +1710,82 @@ function stFit(w, hh) {
 }
 function stCmpRef() {
   if (!ST.ref) return null;
-  return ST.fixed && ST.crop ? { img: ST.crop, w: ST.crop.width, h: ST.crop.height } : { img: ST.ref.img, w: ST.ref.w, h: ST.ref.h };
+  return ST.fixed && ST.crop
+    ? { img: ST.crop, w: ST.crop.width, h: ST.crop.height, tag: 'crop' + ST.cropVer }
+    : { img: ST.ref.img, w: ST.ref.w, h: ST.ref.h, tag: 'ref' + ST.refVer };
+}
+
+/* ---------- values: grayscale, value groups, brightness, contrast, squint ---------- */
+const stLookCache = new Map();
+function stLookActive() { const l = ST.look; return !!(l.gray || l.steps || l.bright || l.contrast || l.blur); }
+function stDispLong() {
+  const st = $('#stStage'), dpr = Math.min(2, window.devicePixelRatio || 1);
+  return Math.min(2000, Math.ceil(Math.max(st.clientWidth, st.clientHeight) * dpr / 200) * 200 || 1600);
+}
+function stBoxBlur(d, w, hh, r) {
+  const tmp = new Uint8ClampedArray(d.length), div = 2 * r + 1;
+  for (let y = 0; y < hh; y++) {
+    const row = y * w * 4;
+    for (let c = 0; c < 3; c++) {
+      let sum = 0;
+      for (let k = -r; k <= r; k++) sum += d[row + Math.min(w - 1, Math.max(0, k)) * 4 + c];
+      for (let x = 0; x < w; x++) {
+        tmp[row + x * 4 + c] = sum / div;
+        sum += d[row + Math.min(w - 1, x + r + 1) * 4 + c] - d[row + Math.max(0, x - r) * 4 + c];
+      }
+    }
+  }
+  for (let x = 0; x < w; x++) for (let c = 0; c < 3; c++) {
+    let sum = 0;
+    for (let k = -r; k <= r; k++) sum += tmp[(Math.min(hh - 1, Math.max(0, k)) * w + x) * 4 + c];
+    for (let y = 0; y < hh; y++) {
+      d[(y * w + x) * 4 + c] = sum / div;
+      sum += tmp[(Math.min(hh - 1, y + r + 1) * w + x) * 4 + c] - tmp[(Math.max(0, y - r) * w + x) * 4 + c];
+    }
+  }
+}
+/* Returns the source drawn with the current value settings, at most maxLong pixels on its long side. */
+function stLookSrc(src, w, hh, tag, maxLong) {
+  if (!stLookActive() || ST.lookBlocked) return src;
+  const l = ST.look, key = [tag, maxLong, l.gray, l.steps, l.split, l.bright, l.contrast, l.blur].join('|');
+  if (stLookCache.has(key)) return stLookCache.get(key);
+  const k = Math.min(1, maxLong / Math.max(w, hh)), cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(hh * k));
+  const c = stCanvas(cw, ch), x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(src, 0, 0, cw, ch);
+  let img;
+  try { img = x.getImageData(0, 0, cw, ch); }
+  catch {
+    ST.lookBlocked = true;
+    toast("Pinterest doesn't let this pin's values be changed here. Mirror still works; copy the pin into one of your boards to use the rest.");
+    return src;
+  }
+  const d = img.data;
+  if (l.blur > 0) { const r = Math.max(1, Math.round(l.blur / 100 * 0.022 * Math.max(cw, ch))); stBoxBlur(d, cw, ch, r); stBoxBlur(d, cw, ch, r); }
+  const cf = l.contrast >= 0 ? 1 + l.contrast / 25 : 1 + l.contrast / 62.5, bo = l.bright * 1.3;
+  const adj = v => (v - 128) * cf + 128 + bo;
+  const N = l.steps, tones = { 2: [24, 236], 3: [24, 128, 236], 5: [18, 70, 128, 186, 242] }[N];
+  let lo = 0, hi = 255;
+  if (tones) {
+    const hist = new Uint32Array(256), n = cw * ch;
+    for (let i = 0; i < d.length; i += 4) { const v = adj(0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]); hist[v < 0 ? 0 : v > 255 ? 255 : v | 0]++; }
+    let acc = 0; lo = -1;
+    for (let i = 0; i < 256; i++) { acc += hist[i]; if (lo < 0 && acc >= n * 0.01) lo = i; if (acc >= n * 0.99) { hi = i; break; } }
+    if (hi - lo < 8) { lo = 0; hi = 255; }
+  }
+  const gray = l.gray || !!tones, sh = l.split / 100;
+  for (let i = 0; i < d.length; i += 4) {
+    let r = adj(d[i]), g = adj(d[i + 1]), b = adj(d[i + 2]);
+    if (gray) {
+      let v = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      if (tones) { let t = Math.floor(((v - lo) / (hi - lo) - sh) * N); v = tones[t < 0 ? 0 : t >= N ? N - 1 : t]; }
+      r = g = b = v;
+    }
+    d[i] = r; d[i + 1] = g; d[i + 2] = b;
+  }
+  x.putImageData(img, 0, 0);
+  stLookCache.set(key, c);
+  while (stLookCache.size > 4) stLookCache.delete(stLookCache.keys().next().value);
+  return c;
 }
 function stFitSketch() {
   const ref = stCmpRef(), sk = ST.sketch;
@@ -1731,6 +1808,7 @@ function stPaint() {
   const ctx = c.getContext('2d');
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, c.width, c.height);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (ST.look.mirror) { ctx.translate(W, 0); ctx.scale(-1, 1); }
   ctx.imageSmoothingQuality = 'high';
   if (!ST.ref) return;
   if (ST.mode === 'compose') stPaintCompose(ctx); else stPaintCompare(ctx);
@@ -1750,13 +1828,13 @@ function stFrameHandles() {
 function stPaintCompose(ctx) {
   if (ST.fixed && ST.crop) {
     const c = ST.crop, L = stFit(c.width, c.height); ST.L = L;
-    ctx.drawImage(c, L.ox, L.oy, c.width * L.k, c.height * L.k);
+    ctx.drawImage(stLookSrc(c, c.width, c.height, 'crop' + ST.cropVer, stDispLong()), L.ox, L.oy, c.width * L.k, c.height * L.k);
     stDrawGuides(ctx, L.ox, L.oy, c.width * L.k, c.height * L.k, 1);
     return;
   }
   const R = ST.ref, L = stFit(R.w, R.h); ST.L = L;
   const iw = R.w * L.k, ih = R.h * L.k;
-  ctx.drawImage(R.img, L.ox, L.oy, iw, ih);
+  ctx.drawImage(stLookSrc(R.img, R.w, R.h, 'ref' + ST.refVer, stDispLong()), L.ox, L.oy, iw, ih);
   const { hs, x0, y0, x1, y1 } = stFrameHandles();
   // one shape with a hole, slightly larger than the image, so no seams show at the edges
   ctx.fillStyle = ST.border === 'black' ? '#000000' : 'rgba(0,0,0,.62)';
@@ -1818,17 +1896,18 @@ function stPaintSketchLayer(ctx, ref, L, forExport) {
   else ctx.drawImage(ST.sketch, 0, 0);
   ctx.restore();
 }
-function stPaintRef(ctx, ref, L) {
+function stPaintRef(ctx, ref, L, maxLong) {
   const w = ref.w * L.k, hh = ref.h * L.k;
   if (ST.refFade < 1) { ctx.fillStyle = '#ffffff'; ctx.fillRect(L.ox, L.oy, w, hh); ctx.globalAlpha = ST.refFade; }
-  ctx.drawImage(ref.img, L.ox, L.oy, w, hh);
+  ctx.drawImage(stLookSrc(ref.img, ref.w, ref.h, ref.tag, maxLong || stDispLong()), L.ox, L.oy, w, hh);
   ctx.globalAlpha = 1;
 }
 function stMarker(ctx, x, y, n) {
   ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.fillStyle = '#e5383b'; ctx.fill();
   ctx.lineWidth = 2; ctx.strokeStyle = '#ffffff'; ctx.stroke();
   ctx.fillStyle = '#ffffff'; ctx.font = '600 12px ' + getComputedStyle(document.body).fontFamily;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(n), x, y + 0.5);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.save(); ctx.translate(x, y + 0.5); if (ST.look.mirror) ctx.scale(-1, 1); ctx.fillText(String(n), 0, 0); ctx.restore();
 }
 function stPaintCompare(ctx) {
   const ref = stCmpRef();
@@ -1950,7 +2029,7 @@ function stDownload(canvas, name) {
 }
 function stCompositionExport(withGuides) {
   const c = ST.crop, out = stCanvas(c.width, c.height), x = out.getContext('2d');
-  x.drawImage(c, 0, 0);
+  x.drawImage(withGuides ? stLookSrc(c, c.width, c.height, 'crop' + ST.cropVer, Math.max(c.width, c.height)) : c, 0, 0, c.width, c.height);
   if (withGuides) stDrawGuides(x, 0, 0, c.width, c.height, Math.max(1, c.width / 700));
   return out;
 }
@@ -1959,7 +2038,7 @@ function stCompareExport() {
   const out = stCanvas(ref.w * k, ref.h * k), x = out.getContext('2d');
   const L = { k, ox: 0, oy: 0 };
   x.fillStyle = '#ffffff'; x.fillRect(0, 0, out.width, out.height);
-  stPaintRef(x, ref, L);
+  stPaintRef(x, ref, L, Math.max(out.width, out.height));
   if (ST.sketch) stPaintSketchLayer(x, ref, L, true);
   return out;
 }
@@ -2050,6 +2129,18 @@ function stRender() {
     $('#stRot').value = String(Math.max(-45, Math.min(45, deg))); $('#stRotV').textContent = deg + '°';
     $('#stFlicker').checked = ST.flicker;
   }
+  $('#stTools').hidden = !has;
+  if (!has) $('#stValues').hidden = true;
+  const lk = ST.look;
+  $('#stGrayBtn').setAttribute('aria-pressed', String(lk.gray));
+  $('#stMirrorBtn').setAttribute('aria-pressed', String(lk.mirror));
+  $('#stValuesBtn').setAttribute('aria-pressed', String(!$('#stValues').hidden || lk.steps > 0 || !!lk.bright || !!lk.contrast || !!lk.blur));
+  $('#stValuesBtn').setAttribute('aria-expanded', String(!$('#stValues').hidden));
+  $$('#stStepsSeg button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.s) === lk.steps)));
+  $('#stSplitRow').hidden = !lk.steps;
+  for (const [id, key] of [['stSplit', 'split'], ['stBright', 'bright'], ['stContrast', 'contrast'], ['stBlur', 'blur']]) {
+    $('#' + id).value = String(lk[key]); $('#' + id + 'V').textContent = String(lk[key]);
+  }
   let hint = '';
   if (has && !compose) {
     if (ST.corners) hint = 'Drag the four dots onto the corners of your drawing area, then press Apply.';
@@ -2067,7 +2158,10 @@ function stRender() {
 function stCursor(c) { const s = $('#stStage'); if (s) s.style.cursor = c || (ST.mode === 'compare' && ST.align ? 'crosshair' : ''); }
 
 /* ---------- pointer + keyboard ---------- */
-function stLocal(e) { const r = $('#stStage').getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+function stLocal(e) {
+  const r = $('#stStage').getBoundingClientRect(), x = e.clientX - r.left;
+  return { x: ST.look.mirror ? r.width - x : x, y: e.clientY - r.top };
+}
 function stToImg(p) { const L = ST.L; return [(p.x - L.ox) / L.k, (p.y - L.oy) / L.k]; }
 function stHitFrame(p, touch) {
   const { hs, x0, y0, x1, y1 } = stFrameHandles(), rad = touch ? 22 : 12;
@@ -2107,7 +2201,7 @@ function stBindStudio() {
   let pinch = null;
   if ('ResizeObserver' in window) new ResizeObserver(() => stDraw()).observe(stage);
   stage.addEventListener('pointerdown', e => {
-    if (!ST.ref || !ST.L || e.target.closest('button, label, a')) return;
+    if (!ST.ref || !ST.L || e.target.closest('button, label, a, input, .st-values, .st-tools')) return;
     stage.setPointerCapture(e.pointerId);
     const p = stLocal(e);
     ptrs.set(e.pointerId, p);
@@ -2190,7 +2284,7 @@ function stBindStudio() {
   stage.addEventListener('pointerup', up);
   stage.addEventListener('pointercancel', up);
   stage.addEventListener('wheel', e => {
-    if (!ST.ref) return;
+    if (!ST.ref || e.target.closest('.st-values, .st-tools')) return;
     const p = stLocal(e), f = Math.exp(-e.deltaY * 0.0015);
     if (ST.mode === 'compose' && !ST.fixed) { e.preventDefault(); stScaleFrame(f); stReadout(); stDraw(); }
     else if (ST.mode === 'compare' && ST.sketch && !ST.align && !ST.corners) {
@@ -2225,7 +2319,7 @@ function stBindStudio() {
     const R = ST.ref, f = ST.frame, k = Math.min(1, 2400 / Math.max(f.w, f.h));
     const c = stCanvas(f.w * k, f.h * k);
     c.getContext('2d').drawImage(R.img, f.x, f.y, f.w, f.h, 0, 0, c.width, c.height);
-    ST.crop = c; ST.fixed = true; ST.cmpKey = '';
+    ST.crop = c; ST.fixed = true; ST.cmpKey = ''; ST.cropVer++;
     stRender();
   });
   $('#stUnfix').addEventListener('click', () => { ST.fixed = false; ST.crop = null; ST.cmpKey = ''; stRender(); });
@@ -2271,6 +2365,19 @@ function stBindStudio() {
     if (ST.flicker) flickT = setInterval(() => { if (S.view !== 'studio' || !ST.flicker) return; ST.flickOn = !ST.flickOn; stDraw(); }, 550);
     stDraw();
   });
+  $('#stGrayBtn').addEventListener('click', () => { ST.look.gray = !ST.look.gray; stRender(); });
+  $('#stMirrorBtn').addEventListener('click', () => { ST.look.mirror = !ST.look.mirror; stRender(); });
+  $('#stValuesBtn').addEventListener('click', () => { $('#stValues').hidden = !$('#stValues').hidden; stRender(); });
+  $('#stValuesClose').addEventListener('click', () => { $('#stValues').hidden = true; stRender(); });
+  $$('#stStepsSeg button').forEach(b => b.addEventListener('click', () => { ST.look.steps = Number(b.dataset.s); stRender(); }));
+  let lookT = 0;
+  for (const [id, key] of [['stSplit', 'split'], ['stBright', 'bright'], ['stContrast', 'contrast'], ['stBlur', 'blur']]) {
+    $('#' + id).addEventListener('input', e => {
+      ST.look[key] = Number(e.target.value); $('#' + id + 'V').textContent = e.target.value;
+      clearTimeout(lookT); lookT = setTimeout(stDraw, 60);
+    });
+  }
+  $('#stLookReset').addEventListener('click', () => { Object.assign(ST.look, { gray: false, steps: 0, split: 0, bright: 0, contrast: 0, blur: 0 }); stRender(); });
   $('#stCmpDownload').addEventListener('click', () => stDownload(stCompareExport(), 'sketch-check.jpg'));
   $('#stSketchClear').addEventListener('click', () => { ST.sketch = ST.sketchOrig = null; ST.layers = null; ST.corners = ST.align = null; stRender(); });
   document.addEventListener('keyup', e => { if (e.code === 'Space' && ST.peek && S.view === 'studio') peek(false); });
@@ -2281,10 +2388,14 @@ function stKey(e) {
   if (!ST.ref) return false;
   const k = e.key;
   if (k === 'Escape' && (ST.align || ST.corners)) { ST.align = null; ST.corners = null; stRender(); return true; }
+  const lk = k.toLowerCase(), dir = ST.look.mirror ? -1 : 1;
+  if (lk === 'g') { $('#stGrayBtn').click(); return true; }
+  if (lk === 'f') { $('#stMirrorBtn').click(); return true; }
+  if (lk === 'v') { ST.look.steps = { 0: 2, 2: 3, 3: 5, 5: 0 }[ST.look.steps]; stRender(); return true; }
   if (ST.mode === 'compose' && !ST.fixed) {
     const step = (e.shiftKey ? 0.05 : 0.01), f = ST.frame;
     const mv = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
-    if (mv) { ST.frame = stClampFrame(Object.assign({}, f, { x: f.x + mv[0] * step * ST.ref.w, y: f.y + mv[1] * step * ST.ref.h })); stRender(); return true; }
+    if (mv) { ST.frame = stClampFrame(Object.assign({}, f, { x: f.x + dir * mv[0] * step * ST.ref.w, y: f.y + mv[1] * step * ST.ref.h })); stRender(); return true; }
     if (k === '+' || k === '=') { stScaleFrame(1.05); stRender(); return true; }
     if (k === '-') { stScaleFrame(1 / 1.05); stRender(); return true; }
     if (k === 'Enter') { $('#stFix').click(); return true; }
@@ -2293,7 +2404,7 @@ function stKey(e) {
   if (ST.mode === 'compare' && ST.sketch && !ST.align && !ST.corners) {
     const ref = stCmpRef(), L = ST.L || { k: 1 }, px = (e.shiftKey ? 10 : 1) / L.k;
     const mv = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
-    if (mv) { ST.xf.tx += mv[0] * px; ST.xf.ty += mv[1] * px; stDraw(); return true; }
+    if (mv) { ST.xf.tx += dir * mv[0] * px; ST.xf.ty += mv[1] * px; stDraw(); return true; }
     if (k === '+' || k === '=') { stScaleAbout(ref.w / 2, ref.h / 2, e.shiftKey ? 1.05 : 1.01); stRender(); return true; }
     if (k === '-') { stScaleAbout(ref.w / 2, ref.h / 2, 1 / (e.shiftKey ? 1.05 : 1.01)); stRender(); return true; }
     if (k === '[' || k === ']') { stRotateAbout(ref.w / 2, ref.h / 2, (k === '[' ? -1 : 1) * (e.shiftKey ? 2 : 0.5) * Math.PI / 180); stRender(); return true; }
