@@ -181,8 +181,12 @@ button{font:inherit;color:inherit}
   .top-in{display:grid;grid-template-columns:1fr auto;column-gap:var(--s3);min-height:0}
   .brand{padding-block:var(--s2)}
   .status{grid-column:2;grid-row:1}
-  .tabs{grid-column:1/-1;grid-row:2;justify-content:space-between}
-  .tab{padding:0 var(--s2);height:44px}
+  .tabs{grid-column:1/-1;grid-row:2;justify-content:space-between;min-width:0;overflow-x:auto;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{padding:0 var(--s2);height:44px;flex:none}
+}
+@media (max-width:420px){
+  .tab{padding:0 6px;font-size:var(--size-small)}
 }
 
 main{max-width:1240px;margin:0 auto;padding-top:var(--s5)}

@@ -9,6 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M7 29.5c1.6-8.6 6-15 14.5-20.4' fill='none' stroke='%238d9cb7' stroke-width='3.2' stroke-linecap='round'/%3E%3Cellipse cx='24.6' cy='6.2' rx='3.3' ry='4' transform='rotate(32 24.6 6.2)' fill='none' stroke='%23515e7e' stroke-width='2'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/assets/styles.css">
 <link rel="stylesheet" href="/assets/studio.css">
+<link rel="stylesheet" href="/assets/learn.css">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -55,6 +56,7 @@
     </a>
     <nav class="tabs" aria-label="Sections">
       <a class="tab" href="#practice" data-view="practice">Practice</a>
+      <a class="tab" href="#learn" data-view="learn">Learn</a>
       <a class="tab" href="#library" data-view="library">Library</a>
       <a class="tab" href="#timer" data-view="timer">Timer</a>
       <a class="tab" href="#sources" data-view="sources">Sources</a>
@@ -133,6 +135,37 @@
         </div>
       </aside>
     </div>
+  </section>
+
+  <!-- LEARN -->
+  <section id="v-learn" class="view" aria-label="Learn" hidden>
+    <div id="lnOverview">
+      <div class="ln-head">
+        <div>
+          <h2>Curriculum</h2>
+          <p class="muted">Eight skill tracks, each practiced with timed references. Follow the suggested path, or pick any track.</p>
+        </div>
+        <div class="seg" id="lnModeSeg" role="group" aria-label="Show">
+          <button type="button" data-m="path">Suggested path</button>
+          <button type="button" data-m="tracks">Tracks</button>
+        </div>
+      </div>
+      <div class="ln-top">
+        <div class="card ln-next" id="lnNext"></div>
+        <div class="card ln-progress" aria-label="Progress">
+          <div class="kpis">
+            <div class="kpi"><b id="lnKEx">0</b><span class="lbl">Exercises done</span></div>
+            <div class="kpi"><b id="lnKUnits">0</b><span class="lbl">Units done</span></div>
+            <div class="kpi"><b id="lnKMin">0</b><span class="lbl">Minutes practiced</span></div>
+          </div>
+          <ul class="ln-skillbars" id="lnSkills"></ul>
+        </div>
+      </div>
+      <div id="lnPath" class="ln-path"></div>
+      <div id="lnTracks" class="ln-tracks" hidden></div>
+      <p class="ln-foot muted" id="lnFoot"></p>
+    </div>
+    <article id="lnUnit" class="ln-unit" hidden></article>
   </section>
 
   <!-- LIBRARY -->

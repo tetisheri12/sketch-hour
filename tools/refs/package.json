@@ -1,0 +1,7 @@
+{
+  "name": "sketch-hour-refs",
+  "private": true,
+  "description": "Renders the curriculum's reference images with three.js in headless Chromium",
+  "scripts": { "render": "node run.js jobs-all.js ../../app/refs" },
+  "dependencies": { "three": "0.169.0", "playwright": "^1.48.0" }
+}

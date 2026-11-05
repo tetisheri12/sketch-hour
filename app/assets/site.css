@@ -134,3 +134,21 @@ table.kb td:first-child{white-space:nowrap;width:1%}
 
 .notfound{padding-block:var(--s6);display:grid;gap:var(--s4);justify-items:start;max-width:40em}
 .notfound h1{font-size:var(--size-2);line-height:1.15}
+
+/* curriculum page */
+.cur-how{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s3);padding-bottom:var(--s6)}
+@media (max-width:760px){.cur-how{grid-template-columns:minmax(0,1fr)}}
+.cur-terms{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--s3)}
+.cur-term{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--s4);align-items:start;background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow-card);padding:var(--s4)}
+.cur-n{font-size:var(--size-1);font-weight:700;line-height:.9;color:var(--primary);font-variant-numeric:tabular-nums;min-width:1.1em}
+.cur-term ul{list-style:none;padding:0;display:grid;gap:var(--s2)}
+.cur-term a{display:grid;color:var(--text-strong);text-decoration:none;font-weight:600}
+.cur-term a:hover{color:var(--link);text-decoration:underline}
+.cur-term small{font-size:var(--size-tiny);font-weight:400;color:var(--text-weak);letter-spacing:.04em}
+.cur-tracks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s4)}
+@media (max-width:760px){.cur-tracks{grid-template-columns:minmax(0,1fr)}}
+.cur-track{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow-card);padding:var(--s5);display:grid;gap:var(--s3);align-content:start;scroll-margin-top:80px}
+.cur-track h3{font-size:var(--size-5)}
+.cur-track ol{padding-left:1.4em;display:grid;gap:var(--s3)}
+.cur-track li span{display:block;font-size:var(--size-small);color:var(--text-weak)}
+.cur-track li a{color:var(--text-strong)}

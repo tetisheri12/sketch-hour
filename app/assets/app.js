@@ -117,7 +117,7 @@ const S = {
   boards: [],
   refs: new Map(),
   pending: new Map(),
-  meta: { log: [], pins: [] },
+  meta: { log: [], pins: [], learn: { done: {}, secs: {} } },
   samples: { poses: [], film: [], places: [] },
   samplesReady: false,
   published: [],
@@ -187,7 +187,7 @@ const Local = {
       }
       S.boards = await IDB.all('boards');
       const m = await IDB.get('meta', 'state');
-      if (m) S.meta = { log: m.log || [], pins: m.pins || [] };
+      if (m) S.meta = { log: m.log || [], pins: m.pins || [], learn: Object.assign({ done: {}, secs: {} }, m.learn || {}) };
       S.mode = 'local'; setStatus('ok', 'Saved in this browser');
     } catch {
       S.mode = 'memory'; setStatus('warn', 'Not saved · storage blocked here');
@@ -215,7 +215,7 @@ const Local = {
     if (S.mode === 'local') await IDB.put('boards', b);
   },
   async delBoard(id) { S.boards = S.boards.filter(b => b.id !== id); if (S.mode === 'local') await IDB.del('boards', id); },
-  async saveMeta() { if (S.mode === 'local') await IDB.put('meta', { k: 'state', log: S.meta.log.slice(-400), pins: S.meta.pins }); }
+  async saveMeta() { if (S.mode === 'local') await IDB.put('meta', { k: 'state', log: S.meta.log.slice(-400), pins: S.meta.pins, learn: S.meta.learn }); }
 };
 
 const Store = () => Local;
@@ -489,6 +489,7 @@ function when(t) {
 }
 function logEntry(e) {
   e.at = Date.now();
+  if (e.track) { const L = S.meta.learn; L.secs[e.track] = (L.secs[e.track] || 0) + (e.secs || 0); }
   S.meta.log.push(e);
   if (S.meta.log.length > 400) S.meta.log = S.meta.log.slice(-400);
   persistMeta(); renderLog();
@@ -645,18 +646,23 @@ const P = { active: false };
 function startSession() {
   const base = pool();
   if (!base.length) { toast('Add references to the selected boards first.'); return; }
-  const plan = buildPlan();
-  let deck = CFG.shuffle ? shuffle(base.slice()) : base.slice(), k = 0;
+  runSession(base, buildPlan(), {
+    shuffle: CFG.shuffle, flips: CFG.flips, gray: CFG.gray, grid: CFG.grid, sound: CFG.sound,
+    label: CFG.mode === 'class' ? CLASSES[CFG.cls].name : `${dlabel(CFG.dur)} poses`
+  });
+}
+function runSession(base, plan, o) {
+  let deck = o.shuffle ? shuffle(base.slice()) : base.slice(), k = 0;
   let poseNo = 0;
   for (const e of plan) {
     if (e.t !== 'pose') continue;
-    if (k >= deck.length) { deck = CFG.shuffle ? shuffle(base.slice()) : base.slice(); k = 0; }
-    e.ref = deck[k++]; e.flip = CFG.flips && Math.random() < 0.5; e.no = ++poseNo;
+    if (k >= deck.length) { deck = o.shuffle ? shuffle(base.slice()) : base.slice(); k = 0; }
+    e.ref = deck[k++]; e.flip = o.flips && Math.random() < 0.5; e.no = ++poseNo;
   }
   Object.assign(P, {
     active: true, done: false, plan, i: 0, left: plan[0].dur, running: true, last: performance.now(),
-    spent: new Array(plan.length).fill(0), poses: poseNo, gray: CFG.gray, mirror: false, grid: CFG.grid, sound: CFG.sound,
-    label: CFG.mode === 'class' ? CLASSES[CFG.cls].name : `${dlabel(CFG.dur)} poses`, lastSec: -1
+    spent: new Array(plan.length).fill(0), poses: poseNo, gray: !!o.gray, mirror: false, grid: !!o.grid, sound: o.sound !== false,
+    label: o.label, lastSec: -1, learn: o.learn || null, again: o.again || null
   });
   if (P.sound) audio();
   const pl = $('#player'); pl.hidden = false; pl.classList.remove('idle', 'paused', 'warn');
@@ -768,8 +774,12 @@ function finishSession(completed) {
   const drawn = [];
   P.plan.forEach((e, i) => { if (e.t === 'pose' && P.spent[i] >= 5) drawn.push({ ref: e.ref, s: P.spent[i] }); });
   const secs = drawn.reduce((a, x) => a + x.s, 0);
-  if (secs >= 30) logEntry({ kind: 'session', label: P.label, secs: Math.round(secs), poses: drawn.length });
-  $('#plEndKicker').textContent = P.label;
+  if (secs >= 30) logEntry(Object.assign({ kind: 'session', label: P.label, secs: Math.round(secs), poses: drawn.length }, lnTag(P.learn)));
+  const planned = P.plan.reduce((a, e) => a + (e.t === 'pose' ? e.dur : 0), 0);
+  const learnDone = !!(completed && P.learn && secs >= planned * 0.5);
+  if (learnDone) lnSetDone(P.learn.ex, true);
+  $('#plDone').textContent = P.learn ? 'Back to the unit' : 'Back to setup';
+  $('#plEndKicker').textContent = learnDone ? P.label + ' · exercise done' : P.label;
   $('#plEndTitle').textContent = completed ? 'Session complete' : 'Session ended';
   $('#plStats').replaceChildren(
     h('div', null, h('b', null, String(drawn.length)), h('span', null, 'Poses drawn')),
@@ -801,8 +811,8 @@ const T = Object.assign({ total: 300, left: 300, rounds: 1, round: 1, rest: 0, r
 })());
 const T_PRESETS = [60, 120, 300, 600, 900, 1200, 1800, 2700, 3600];
 function saveTimer() { LS.set('sketchhour.timer', { total: T.total, rounds: T.rounds, rest: T.rest, sound: T.sound }); }
-function tSet(sec, label) {
-  T.running = false; T.resting = false;
+function tSet(sec, label, learn) {
+  T.running = false; T.resting = false; T.learn = learn || null;
   T.total = Math.max(5, Math.round(sec)); T.left = T.total; T.round = 1; T.spent = 0; T.label = label || '';
   saveTimer(); renderTimer();
 }
@@ -815,7 +825,7 @@ function tToggle() {
   renderTimer();
 }
 function tReset() {
-  if (T.spent >= 60) logEntry({ kind: 'timer', label: T.label || 'Timer', secs: Math.round(T.spent), rounds: T.round });
+  if (T.spent >= 60) logEntry(Object.assign({ kind: 'timer', label: T.label || 'Timer', secs: Math.round(T.spent), rounds: T.round }, lnTag(T.learn)));
   T.running = false; T.resting = false; T.left = T.total; T.round = 1; T.spent = 0;
   keepAwake(P.active && !P.done); renderTimer();
 }
@@ -837,9 +847,10 @@ function tickTimer(now) {
   } else {
     if (T.sound) sfx.done();
     T.running = false; T.left = 0;
-    logEntry({ kind: 'timer', label: T.label || 'Timer', secs: Math.round(T.spent), rounds: T.rounds });
+    logEntry(Object.assign({ kind: 'timer', label: T.label || 'Timer', secs: Math.round(T.spent), rounds: T.rounds }, lnTag(T.learn)));
     T.spent = 0; keepAwake(P.active && !P.done);
-    toast(T.label ? `${T.label} finished.` : 'Timer finished.');
+    if (T.learn) { lnSetDone(T.learn.ex, true); toast(`${T.label} finished. Exercise marked done.`); }
+    else toast(T.label ? `${T.label} finished.` : 'Timer finished.');
   }
   renderTimer();
 }
@@ -925,7 +936,7 @@ async function loadViewer() {
   const r = V.list[V.i]; if (!r) { closeViewer(); return; }
   V.vals = 0; V.lum = null; V.thr = null; V.z = 1; V.x = 0; V.y = 0;
   $('#vwEdit').hidden = true;
-  $('#vwTitle').textContent = `${boardName(r.board)} · ${V.i + 1} of ${V.list.length}`;
+  $('#vwTitle').textContent = `${r.setName || boardName(r.board)} · ${V.i + 1} of ${V.list.length}`;
   $('#vwNote').textContent = r.note || (r.sample ? 'Generated sample reference' : 'No note');
   const link = $('#vwLink'), safe = safeLink(r.link || '');
   link.hidden = !safe; if (safe) link.href = safe;
@@ -952,7 +963,7 @@ async function loadViewer() {
   }
   $('#vwFrames').hidden = r.kind === 'image';
   $('#vwValues').disabled = r.kind !== 'image';
-  $('#vwOwn').hidden = !!(r.sample || r.remote);
+  $('#vwOwn').hidden = !!(r.sample || r.remote || r.cur);
   $('#vwPrevRef').hidden = $('#vwNextRef').hidden = V.list.length < 2;
   layoutViewer(); applyViewerLooks(); renderValues(); updFrameUI();
 }
@@ -999,7 +1010,7 @@ async function renderValues() {
       // pin images come from Pinterest; reading their pixels needs Pinterest to allow it (CORS)
       try { source = await loadImg(r.url, true); } catch { source = null; }
       if (tok !== vTok) return;
-      if (!source) { toast("Pinterest doesn't allow value studies on this pin. Copy the image and paste it into a board to study its values."); V.vals = 0; applyViewerLooks(); renderValues(); return; }
+      if (!source) { toast("This image's website doesn't allow value studies on it. Copy the image and paste it into a board to study its values."); V.vals = 0; applyViewerLooks(); renderValues(); return; }
     }
     const max = 1400, k = Math.min(1, max / Math.max(V.nw, V.nh));
     const w = Math.max(1, Math.round(V.nw * k)), hh = Math.max(1, Math.round(V.nh * k));
@@ -1128,7 +1139,7 @@ async function saveEdit(e) {
   catch (err) { toast(errText(err)); return; }
   $('#vwEdit').hidden = true;
   $('#vwNote').textContent = r.note || 'No note';
-  $('#vwTitle').textContent = `${boardName(r.board)} · ${V.i + 1} of ${V.list.length}`;
+  $('#vwTitle').textContent = `${r.setName || boardName(r.board)} · ${V.i + 1} of ${V.list.length}`;
   const link = $('#vwLink'); link.hidden = !r.link; if (r.link) link.href = r.link;
   renderAll();
 }
@@ -1526,6 +1537,7 @@ function stSave() {
 /* ---------- loading ---------- */
 function stCanvas(w, hh) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(hh)); return c; }
 async function stLoadRef(src, name, remote) {
+  ST.learn = null;
   let img = null, clean = true;
   try {
     if (src instanceof Blob) img = await loadImg(URL.createObjectURL(src));
@@ -2326,7 +2338,7 @@ function stBindStudio() {
   $('#stDrawStart').addEventListener('click', () => {
     const ours = T.label === 'Composition study';
     if (ours && (T.running || (T.left > 0 && T.left < T.total))) { tToggle(); return; }
-    tSet(ST.drawDur, 'Composition study'); tToggle();
+    tSet(ST.drawDur, 'Composition study', ST.learn); tToggle();
   });
   $('#stSaveBtn').addEventListener('click', stSaveToLibrary);
   $('#stDownload').addEventListener('click', () => stDownload(stCompositionExport(true), 'composition-with-guides.jpg'));
@@ -2414,21 +2426,210 @@ function stKey(e) {
 }
 
 
+/* ============ learn: curriculum and progress ============ */
+/* The curriculum lives in assets/curriculum.json (built by tools/build_curriculum.py).
+   Progress is kept in this browser: checked exercises in S.meta.learn.done, practice seconds per track in S.meta.learn.secs. */
+const AIC_IIIF = 'https://www.artic.edu/iiif/2/';
+const CUR = { data: null, loading: null, units: new Map(), ex: new Map(), term: new Map(), order: [], refs: new Map() };
+const LN = { mode: LS.get('sketchhour.learnMode', 'path'), shown: '' };
+function loadCurriculum() {
+  if (CUR.data) return Promise.resolve(CUR.data);
+  if (!CUR.loading) {
+    CUR.loading = fetch(BASE + 'assets/curriculum.json', { cache: 'no-cache' })
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error('missing'))))
+      .then(j => {
+        for (const t of j.tracks) for (const u of t.units) { u.track = t; CUR.units.set(u.id, u); for (const e of u.ex) { e.unit = u; CUR.ex.set(e.id, e); } }
+        j.path.forEach((ids, i) => ids.forEach(id => CUR.term.set(id, i + 1)));
+        CUR.order = j.path.flat();
+        CUR.data = j; return j;
+      })
+      .catch(e => { CUR.loading = null; throw e; });
+  }
+  return CUR.loading;
+}
+function setRefs(id) {
+  let c = CUR.refs.get(id); if (c) return c;
+  const s = CUR.data && CUR.data.sets[id]; if (!s) return [];
+  c = s.items.map((it, i) => it.aic ? {
+    id: `cur-${id}-${i}`, kind: 'image', cur: true, remote: true, setName: s.name, w: it.w, h: it.h,
+    url: `${AIC_IIIF}${it.aic}/full/843,/0/default.jpg`, thumb: `${AIC_IIIF}${it.aic}/full/200,/0/default.jpg`,
+    note: `${it.title} — ${it.artist}${it.date ? ', ' + it.date : ''}`, link: 'https://www.artic.edu/artworks/' + it.id
+  } : {
+    id: `cur-${id}-${i}`, kind: 'image', cur: true, setName: s.name, w: it.w, h: it.h,
+    url: BASE + it.src, thumb: BASE + it.src, note: s.name
+  });
+  CUR.refs.set(id, c); return c;
+}
+function lnTag(l) { return l ? { track: l.track, unit: l.unit, ex: l.ex } : {}; }
+function lnIsDone(id) { return !!S.meta.learn.done[id]; }
+function lnSetDone(id, on) {
+  const d = S.meta.learn.done;
+  if (on) d[id] = d[id] || Date.now(); else delete d[id];
+  persistMeta(); renderLearn();
+}
+function unitProg(u) { const n = u.ex.length, d = u.ex.filter(e => lnIsDone(e.id)).length; return { d, n, done: d === n }; }
+function trackProg(t) { let d = 0, n = 0; for (const u of t.units) { const p = unitProg(u); d += p.d; n += p.n; } return { d, n }; }
+function trackMins(id) { return (S.meta.learn.secs[id] || 0) / 60; }
+function nextUnit() { for (const id of CUR.order) { const u = CUR.units.get(id); if (!unitProg(u).done) return u; } return null; }
+function unitLabel(u) { return `${u.track.name} ${u.level} · ${u.title}`; }
+function planText(plan) { return plan.map(([n, d]) => `${n} × ${dlabel(d)}`).join(' + '); }
+function exMeta(e) {
+  if (e.t === 'session') { const m = e.plan.reduce((a, [n, d]) => a + n * d, 0) / 60; return `${CUR.data.sets[e.set].name} · ${planText(e.plan)} · ${minsTxt(m * 60)} min${e.gray ? ' · grayscale' : ''}`; }
+  if (e.t === 'board') { const m = e.plan.reduce((a, [n, d]) => a + n * d, 0) / 60; return `Your ${boardName(e.board)} board · ${planText(e.plan)} · ${minsTxt(m * 60)} min`; }
+  if (e.t === 'study') return `${CUR.data.sets[e.set].name} · one reference · ${e.min} min study timer`;
+  if (e.t === 'studio') return `Studio · ${CUR.data.sets[e.set].name} · ${e.min} min${e.values ? ` · ${e.values} values` : ''}`;
+  return `Timer · ${e.min} min · no reference`;
+}
+function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
+async function lnStart(e) {
+  const u = e.unit, learn = { track: u.track.id, unit: u.id, ex: e.id };
+  const label = `${u.track.name} ${u.level}: ${u.title}`;
+  if (e.t === 'session' || e.t === 'board') {
+    const base = e.t === 'board' ? poolFor(e.board) : setRefs(e.set);
+    if (!base.length) { toast(`Your ${boardName(e.board)} board is empty. Add references in Library or Sources first.`); return; }
+    const plan = [];
+    for (const [n, d] of e.plan) for (let i = 0; i < n; i++) plan.push({ t: 'pose', dur: d });
+    runSession(base, plan, { label, shuffle: true, flips: false, gray: !!e.gray, grid: false, sound: CFG.sound, learn, again: () => lnStart(e) });
+  } else if (e.t === 'study') {
+    const list = setRefs(e.set);
+    openViewer(list, Math.floor(Math.random() * list.length));
+    tSet(e.min * 60, label, learn); tToggle();
+  } else if (e.t === 'studio') {
+    const r = pick(setRefs(e.set));
+    ST.mode = 'compose'; location.hash = '#studio';
+    await stLoadRef(srcOf(r), r.note, !!r.remote);
+    ST.learn = learn; ST.drawDur = e.min * 60;
+    if (e.values) { ST.look.steps = e.values; if ($('#stValues').hidden) $('#stValuesBtn').click(); }
+    stRender(); renderTimer();
+    toast(e.values ? `Values are set to ${e.values}. Find the composition, fix it, then press Start drawing.` : 'Find the composition, fix it, then press Start drawing.');
+  } else {
+    tSet(e.min * 60, label, learn); location.hash = '#timer'; tToggle();
+  }
+}
+
+function renderLearn() {
+  if (S.view !== 'learn') return;
+  if (!CUR.data) {
+    $('#lnPath').replaceChildren(h('p', { class: 'empty' }, 'Loading the curriculum…'));
+    loadCurriculum().then(renderLearn, () => $('#lnPath').replaceChildren(h('p', { class: 'empty' }, "The curriculum couldn't be loaded. Check your connection and reload the page.")));
+    return;
+  }
+  const id = (location.hash.split('/')[1] || '');
+  const u = CUR.units.get(id);
+  $('#lnOverview').hidden = !!u; $('#lnUnit').hidden = !u;
+  if (u) renderUnit(u); else renderOverview();
+  if (LN.shown !== id) { LN.shown = id; window.scrollTo(0, 0); }
+}
+function unitButton(u, withTrack) {
+  const p = unitProg(u);
+  return h('button', { type: 'button', class: 'ln-u' + (p.done ? ' done' : ''), onclick: () => { location.hash = '#learn/' + u.id; } },
+    h('small', null, withTrack ? `${u.track.name} · Level ${u.level}` : `Level ${u.level}`),
+    h('b', null, u.title),
+    h('span', { class: 'ln-dots', 'aria-label': `${p.d} of ${p.n} exercises done` }, ...u.ex.map(e => h('i', { class: lnIsDone(e.id) ? 'on' : '' }))));
+}
+function renderOverview() {
+  const d = CUR.data, nx = nextUnit();
+  $$('#lnModeSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === LN.mode)));
+  // next up
+  const next = $('#lnNext');
+  if (nx) {
+    const p = unitProg(nx), term = CUR.term.get(nx.id);
+    next.replaceChildren(
+      h('span', { class: 'lbl' }, p.d ? `Continue · Term ${term} of ${d.path.length}` : `Next up · Term ${term} of ${d.path.length}`),
+      h('h3', null, unitLabel(nx)),
+      h('p', null, nx.goal),
+      h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'btn primary', onclick: () => { location.hash = '#learn/' + nx.id; } }, icon('play'), p.d ? 'Continue' : 'Open unit'),
+        h('span', { class: 'muted' }, `${p.d} of ${p.n} exercises done`)),
+      (() => { const e = nx.ex.find(x => x.set); return e ? h('div', { class: 'ln-peek', 'aria-hidden': 'true' }, ...setRefs(e.set).slice(0, 8).map(r => h('img', { src: r.thumb, alt: '', loading: 'lazy', width: Math.round(96 * r.w / r.h), height: 96 }))) : null; })());
+  } else {
+    next.replaceChildren(h('span', { class: 'lbl' }, 'Curriculum complete'), h('h3', null, 'Every unit is done.'),
+      h('p', null, 'Go round again with longer poses, or pick any track to keep practicing.'));
+  }
+  // progress
+  let exD = 0, exN = 0, uD = 0, secs = 0;
+  for (const t of d.tracks) { const p = trackProg(t); exD += p.d; exN += p.n; uD += t.units.filter(u => unitProg(u).done).length; secs += S.meta.learn.secs[t.id] || 0; }
+  $('#lnKEx').textContent = `${exD}/${exN}`; $('#lnKUnits').textContent = `${uD}/${CUR.units.size}`; $('#lnKMin').textContent = String(Math.round(secs / 60));
+  $('#lnSkills').replaceChildren(...d.tracks.map(t => {
+    const p = trackProg(t);
+    return h('li', { title: `${p.d} of ${p.n} exercises` }, h('span', null, t.name),
+      h('span', { class: 'ln-bar' }, h('i', { style: `width:${p.n ? (p.d / p.n * 100).toFixed(1) : 0}%` })),
+      h('span', null, `${Math.round(trackMins(t.id))} min`));
+  }));
+  // path / tracks
+  const nowTerm = nx ? CUR.term.get(nx.id) : 0;
+  $('#lnPath').hidden = LN.mode !== 'path'; $('#lnTracks').hidden = LN.mode !== 'tracks';
+  if (LN.mode === 'path') {
+    $('#lnPath').replaceChildren(...d.path.map((ids, i) => h('section', { class: 'ln-term' + (i + 1 === nowTerm ? ' now' : '') },
+      h('span', { class: 'lbl' }, `Term ${i + 1}`),
+      h('div', { class: 'ln-term-units' }, ...ids.map(id => unitButton(CUR.units.get(id), true))))));
+  } else {
+    $('#lnTracks').replaceChildren(...d.tracks.map(t => {
+      const p = trackProg(t);
+      return h('section', { class: 'card ln-track' },
+        h('h3', null, t.name), h('p', { class: 'muted' }, t.blurb),
+        h('span', { class: 'ln-bar' }, h('i', { style: `width:${p.n ? (p.d / p.n * 100).toFixed(1) : 0}%` })),
+        h('span', { class: 'meta' }, `${p.d} of ${p.n} exercises · ${Math.round(trackMins(t.id))} min practiced`),
+        h('ol', { class: 'ln-levels' }, ...t.units.map(u => {
+          const up = unitProg(u);
+          return h('li', null, h('button', { type: 'button', onclick: () => { location.hash = '#learn/' + u.id; } },
+            h('span', { class: 'n' }, String(u.level)), h('span', null, u.title),
+            h('span', { class: 'ln-state' + (up.done ? ' done' : '') }, up.done ? 'Done' : `${up.d}/${up.n}`)));
+        })));
+    }));
+  }
+  $('#lnFoot').textContent = `${d.pace} Rendered references are made by Sketch Hour; museum references are public-domain works from the Art Institute of Chicago. Progress is saved in this browser.`;
+}
+function renderUnit(u) {
+  const d = CUR.data, term = CUR.term.get(u.id), i = CUR.order.indexOf(u.id);
+  const prev = CUR.units.get(CUR.order[i - 1]), next = CUR.units.get(CUR.order[i + 1]);
+  const p = unitProg(u);
+  const sets = [...new Set(u.ex.filter(e => e.set).map(e => e.set))];
+  $('#lnUnit').replaceChildren(
+    h('button', { type: 'button', class: 'linkish ln-back', onclick: () => { location.hash = '#learn'; } }, '← All units'),
+    h('header', { class: 'ln-unit-head' },
+      h('span', { class: 'lbl' }, `${u.track.name} · Level ${u.level} of ${u.track.units.length} · Term ${term}`),
+      h('h2', null, u.title),
+      h('p', null, u.goal)),
+    h('section', null, h('div', { class: 'lbl', style: 'margin-bottom:8px' }, 'Look for'), h('ul', { class: 'ln-look' }, ...u.look.map(x => h('li', null, x)))),
+    h('section', null,
+      h('div', { class: 'lbl', style: 'margin-bottom:8px' }, `Exercises · ${p.d} of ${p.n} done`),
+      h('ol', { class: 'ln-exs' }, ...u.ex.map(e => {
+        const done = lnIsDone(e.id);
+        const cb = h('input', { type: 'checkbox', 'aria-label': `Mark “${e.title}” done` });
+        cb.checked = done; cb.addEventListener('change', () => lnSetDone(e.id, cb.checked));
+        return h('li', { class: 'ln-ex' + (done ? ' done' : '') }, cb,
+          h('div', null, h('b', null, e.title), h('span', { class: 'how' }, e.how), h('span', { class: 'meta' }, exMeta(e))),
+          h('button', { type: 'button', class: 'btn' + (done ? '' : ' primary'), onclick: () => lnStart(e) }, icon('play'), done ? 'Again' : 'Start'));
+      }))),
+    sets.length ? h('section', { class: 'ln-refs' }, h('div', { class: 'lbl' }, 'References in this unit'), ...sets.map(sid => {
+      const s = d.sets[sid], list = setRefs(sid);
+      return h('div', { class: 'ln-set' },
+        h('div', { class: 'ln-set-head' }, h('b', null, s.name), h('span', { class: 'ln-credit' }, `${list.length} images · ${s.credit}`)),
+        h('div', { class: 'ln-strip' }, ...list.slice(0, 24).map((r, k) => h('button', { type: 'button', title: r.note, onclick: () => openViewer(list, k) },
+          h('img', { src: r.thumb, alt: r.note, loading: 'lazy', width: Math.round(120 * r.w / r.h), height: 120 })))));
+    })) : null,
+    h('nav', { class: 'ln-nav' },
+      prev ? h('button', { type: 'button', class: 'btn', onclick: () => { location.hash = '#learn/' + prev.id; } }, '← ' + unitLabel(prev)) : h('span'),
+      next ? h('button', { type: 'button', class: 'btn', onclick: () => { location.hash = '#learn/' + next.id; } }, unitLabel(next) + ' →') : h('span')));
+}
+
 /* ============ routing + render ============ */
-const VIEWS = ['practice', 'library', 'timer', 'sources', 'studio'];
+const VIEWS = ['practice', 'learn', 'library', 'timer', 'sources', 'studio'];
 function route() {
-  const v = (location.hash || '').slice(1);
+  const v = (location.hash || '').slice(1).split('/')[0];
   const next = VIEWS.includes(v) ? v : 'practice';
   const changed = next !== S.view; S.view = next;
   for (const n of VIEWS) $('#v-' + n).hidden = n !== S.view;
   $$('.tab').forEach(t => t.setAttribute('aria-current', t.dataset.view === S.view ? 'page' : 'false'));
   if (changed) window.scrollTo(0, 0);
   if (S.view === 'studio') stRender();
+  if (S.view === 'learn') renderLearn();
 }
 let rq = 0;
 function renderAll() {
   if (rq) return;
-  rq = requestAnimationFrame(() => { rq = 0; renderPractice(); renderLibrary(); renderSources(); });
+  rq = requestAnimationFrame(() => { rq = 0; renderPractice(); renderLibrary(); renderSources(); renderLearn(); });
 }
 
 /* ============ events ============ */
@@ -2443,6 +2644,8 @@ function bind() {
   [['optShuffle', 'shuffle'], ['optGray', 'gray'], ['optFlips', 'flips'], ['optGrid', 'grid'], ['optSound', 'sound']].forEach(([id, k]) =>
     $('#' + id).addEventListener('change', e => { CFG[k] = e.target.checked; saveCfg(); }));
   $('#startBtn').addEventListener('click', startSession);
+  // learn
+  $$('#lnModeSeg button').forEach(b => b.addEventListener('click', () => { LN.mode = b.dataset.m; LS.set('sketchhour.learnMode', LN.mode); renderLearn(); }));
   // library
   $('#fileIn').addEventListener('change', e => { addFiles(e.target.files, { board: S.libBoard }); e.target.value = ''; });
   $('#libPractice').addEventListener('click', () => { CFG.boards = [S.libBoard]; saveCfg(); location.hash = '#practice'; renderPractice(); });
@@ -2549,8 +2752,8 @@ function bind() {
     else pl.requestFullscreen().catch(() => toast("Fullscreen isn't available here."));
   });
   $('#plEndBtn').addEventListener('click', () => finishSession(false));
-  $('#plAgain').addEventListener('click', () => { closePlayer(); startSession(); });
-  $('#plDone').addEventListener('click', () => { closePlayer(); location.hash = '#practice'; });
+  $('#plAgain').addEventListener('click', () => { const again = P.again; closePlayer(); (again || startSession)(); });
+  $('#plDone').addEventListener('click', () => { const l = P.learn; closePlayer(); location.hash = l ? '#learn/' + l.unit : '#practice'; });
   $('#plImg').addEventListener('load', placePlGrid);
   $('#plVid').addEventListener('loadedmetadata', placePlGrid);
 
