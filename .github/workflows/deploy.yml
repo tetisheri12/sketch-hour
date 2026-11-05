@@ -1,0 +1,46 @@
+name: Deploy to GitHub Pages
+
+# Runs on every push to main, once a day (to pick up new pins), and from the Actions tab.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Node version
+        run: node --version
+
+      - id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Sync Pinterest boards from boards.json
+        run: node scripts/sync-boards.js --previous "${{ steps.pages.outputs.base_url }}/data/boards.json"
+
+      - name: Point links at the site's base path
+        run: node scripts/prefix-base.js app "${{ steps.pages.outputs.base_path }}"
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: app
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

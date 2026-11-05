@@ -1,0 +1,15 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Board sync tests (against a fake Pinterest)
+        run: node --test test/sync.test.js
+      - name: App script parses
+        run: node --check app/assets/app.js

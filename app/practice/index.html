@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://i.pinimg.com; media-src 'self' blob:; connect-src 'self' blob: data: https://i.pinimg.com; font-src 'self'; base-uri 'self'; form-action 'self'">
+<title>Practice · Sketch Hour</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M7 29.5c1.6-8.6 6-15 14.5-20.4' fill='none' stroke='%238d9cb7' stroke-width='3.2' stroke-linecap='round'/%3E%3Cellipse cx='24.6' cy='6.2' rx='3.3' ry='4' transform='rotate(32 24.6 6.2)' fill='none' stroke='%23515e7e' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8.5 5.5v13M15.5 5.5v13" stroke-width="2.6"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path d="M15 5.5L8.5 12l6.5 6.5"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 5.5l6.5 6.5L9 18.5"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-gray" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></symbol>
+  <symbol id="i-flip" viewBox="0 0 24 24"><path d="M12 3v18" stroke-dasharray="2 2.5"/><path d="M9 7L4 17h5zM15 7l5 10h-5z"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M9.33 4v16M14.67 4v16M4 9.33h16M4 14.67h16"/></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-zin" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4M8.5 11h5M11 8.5v5"/></symbol>
+  <symbol id="i-zout" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4M8.5 11h5"/></symbol>
+  <symbol id="i-fprev" viewBox="0 0 24 24"><path d="M6.5 5.5v13"/><path d="M18 6.5l-8 5.5 8 5.5z" fill="currentColor"/></symbol>
+  <symbol id="i-fnext" viewBox="0 0 24 24"><path d="M17.5 5.5v13"/><path d="M6 6.5l8 5.5-8 5.5z" fill="currentColor"/></symbol>
+  <symbol id="i-rew" viewBox="0 0 24 24"><path d="M11.5 6l-6 6 6 6M19 6l-6 6 6 6"/></symbol>
+  <symbol id="i-ff" viewBox="0 0 24 24"><path d="M5 6l6 6-6 6M12.5 6l6 6-6 6"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15.5V4M7 9l5-5 5 5"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></symbol>
+  <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="7.5"/><path d="M12 13V9.5M9.5 2.5h5"/></symbol>
+  <symbol id="i-values" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 15c4-1 6-6 10-8 2-1 4-1 6-1v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" fill="currentColor"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+  <symbol id="i-dice" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.2" fill="currentColor"/><circle cx="15" cy="15" r="1.2" fill="currentColor"/><circle cx="15" cy="9" r="1.2" fill="currentColor"/><circle cx="9" cy="15" r="1.2" fill="currentColor"/></symbol>
+</svg>
+
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="/" aria-label="Sketch Hour home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 29.5c1.6-8.6 6-15 14.5-20.4" fill="none" stroke="var(--lavender-grey)" stroke-width="3.2" stroke-linecap="round"/><path d="M12.5 21.5c3 .3 6.2 1.6 8.6 4" fill="none" stroke="var(--lavender-grey)" stroke-width="2.2" stroke-linecap="round"/><ellipse cx="24.6" cy="6.2" rx="3.3" ry="4" transform="rotate(32 24.6 6.2)" fill="none" stroke="var(--text-strong)" stroke-width="2"/></svg>
+      <span>Sketch Hour</span>
+    </a>
+    <nav class="tabs" aria-label="Sections">
+      <a class="tab" href="#practice" data-view="practice">Practice</a>
+      <a class="tab" href="#library" data-view="library">Library</a>
+      <a class="tab" href="#timer" data-view="timer">Timer</a>
+      <a class="tab" href="#sources" data-view="sources">Sources</a>
+    </nav>
+    <div class="status" id="status" data-kind="busy" role="status"><i></i><span id="statusText">Connecting…</span></div>
+  </div>
+</header>
+
+<main>
+  <!-- PRACTICE -->
+  <section id="v-practice" class="view" aria-label="Practice">
+    <div class="bench">
+      <div class="card setup">
+        <div class="setup-head">
+          <h2>Gesture session</h2>
+          <div class="seg" id="modeSeg" role="group" aria-label="Session format">
+            <button type="button" data-mode="fixed">Fixed time</button>
+            <button type="button" data-mode="class">Class</button>
+          </div>
+        </div>
+        <div class="field">
+          <div class="lbl">Draw from</div>
+          <div class="chips" id="srcChips"></div>
+        </div>
+        <div id="fixedOpts" class="setup">
+          <div class="field">
+            <div class="lbl">Each pose</div>
+            <div class="row">
+              <div class="chips" id="durChips"></div>
+              <label class="dur-custom"><input type="number" id="durCustom" min="0.25" max="120" step="0.25" placeholder="other" aria-label="Custom minutes per pose"> min</label>
+            </div>
+          </div>
+          <div class="field">
+            <div class="lbl">Number of poses</div>
+            <div class="chips" id="countChips"></div>
+          </div>
+        </div>
+        <div id="classOpts" class="field" hidden>
+          <div class="lbl">Class plan · warms up with short gestures, ends on long studies</div>
+          <div class="presets" id="classPresets"></div>
+        </div>
+        <div class="field">
+          <div class="lbl">Schedule</div>
+          <div class="strip" id="strip" aria-hidden="true"></div>
+          <div class="strip-meta" id="stripMeta"></div>
+        </div>
+        <div class="field">
+          <div class="lbl">Display</div>
+          <div class="toggles">
+            <label class="tg"><input type="checkbox" id="optShuffle"> Shuffle</label>
+            <label class="tg"><input type="checkbox" id="optGray"> Grayscale</label>
+            <label class="tg"><input type="checkbox" id="optFlips"> Random mirror</label>
+            <label class="tg"><input type="checkbox" id="optGrid"> Thirds grid</label>
+            <label class="tg"><input type="checkbox" id="optSound"> Sound cues</label>
+          </div>
+        </div>
+        <div class="go">
+          <button type="button" class="btn primary big" id="startBtn"><svg class="i"><use href="#i-play"/></svg>Start session</button>
+          <span class="hint" id="startHint"></span>
+        </div>
+      </div>
+
+      <aside class="card log" aria-label="Practice log">
+        <h2>Practice log</h2>
+        <div class="kpis">
+          <div class="kpi"><b id="kWeek">0</b><span class="lbl">Min this week</span></div>
+          <div class="kpi"><b id="kStreak">0</b><span class="lbl">Day streak</span></div>
+          <div class="kpi"><b id="kPoses">0</b><span class="lbl">Poses this week</span></div>
+        </div>
+        <div class="week" id="weekBars" role="img" aria-label="Minutes drawn over the last seven days"></div>
+        <div class="field">
+          <div class="lbl">Recent</div>
+          <ol class="recent" id="recent"></ol>
+          <p class="empty" id="logEmpty">No sessions yet. Finished sessions and timers land here.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- LIBRARY -->
+  <section id="v-library" class="view" aria-label="Library" hidden>
+    <div class="lib-head">
+      <div class="chips" id="boardTabs" role="group" aria-label="Boards"></div>
+      <div class="lib-actions">
+        <button type="button" class="btn" id="libPractice"><svg class="i"><use href="#i-play"/></svg>Practice this board</button>
+        <label class="btn primary" for="fileIn" id="libAdd"><svg class="i"><use href="#i-upload"/></svg>Add files</label>
+        <input type="file" id="fileIn" multiple accept="image/*,video/mp4,video/webm" hidden>
+      </div>
+    </div>
+    <form class="board-form" id="boardForm" hidden>
+      <input type="text" id="boardNameIn" maxlength="40" placeholder="Board name, e.g. Heads, Hands, Animals" aria-label="Board name">
+      <button type="submit" class="btn primary" id="boardFormOk">Create board</button>
+      <button type="button" class="btn" id="boardFormCancel">Cancel</button>
+    </form>
+    <div class="board-tools" id="boardTools"></div>
+    <div class="drop" id="drop"><b>Drop images, GIFs or clips here</b> or paste with Ctrl+V / ⌘V. Pinterest pins: right-click the image → Copy image.</div>
+    <div class="note-bar" id="sampleNote" hidden></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <!-- TIMER -->
+  <section id="v-timer" class="view" aria-label="Timer" hidden>
+    <div class="timer">
+      <div class="t-face">
+        <div class="lbl" id="tLabel">Ready</div>
+        <div class="t-digits" id="tDigits" aria-live="off">05:00</div>
+        <div class="t-bar"><i id="tBar"></i></div>
+      </div>
+      <div class="t-ctrls">
+        <button type="button" class="btn primary big" id="tStart"><svg class="i"><use href="#i-play"/></svg><span>Start</span></button>
+        <button type="button" class="btn big" id="tPlus">+1 min</button>
+        <button type="button" class="btn big" id="tReset">Reset</button>
+      </div>
+      <div class="card t-setup">
+        <div class="field">
+          <div class="lbl">Duration</div>
+          <div class="chips" id="tPresets"></div>
+        </div>
+        <div class="t-row">
+          <label class="f"><span>Custom</span>
+            <span class="t-time"><input type="number" id="tMin" min="0" max="240" aria-label="Minutes"> : <input type="number" id="tSec" min="0" max="59" aria-label="Seconds"></span>
+          </label>
+          <label class="f"><span>Rounds</span>
+            <select id="tRounds"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="8">8</option><option value="10">10</option></select>
+          </label>
+          <label class="f"><span>Rest between</span>
+            <select id="tRest"><option value="0">None</option><option value="15">15 s</option><option value="30">30 s</option><option value="60">1 min</option><option value="120">2 min</option><option value="300">5 min</option></select>
+          </label>
+          <label class="tg"><input type="checkbox" id="tSound"> Chime</label>
+        </div>
+        <p class="muted">Space starts and pauses. Finished timers count toward your practice log.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SOURCES -->
+  <section id="v-sources" class="view" aria-label="Sources" hidden>
+    <div class="src-grid">
+      <article class="card src" aria-labelledby="pinH">
+        <header><span class="src-tag">Pinterest</span><h2 id="pinH">Pinterest boards</h2></header>
+        <p class="muted">These boards are synced from Pinterest once a day and appear in your Library, ready for a session.</p>
+        <ul class="synced" id="pubList"></ul>
+        <p class="empty" id="pubEmpty">No Pinterest boards on this site yet.</p>
+        <div class="sub">
+          <h3>Add single pins</h3>
+          <ol class="steps">
+            <li>Open a pin, right-click the image and choose <b>Copy image</b>. On a phone, long-press it.</li>
+            <li>Click the box below and paste.</li>
+          </ol>
+          <div class="two">
+            <label class="f"><span>Into board</span><select id="pinBoard"></select></label>
+            <label class="f"><span>Pin link (optional)</span><input type="url" id="pinLink" placeholder="pinterest.com/pin/…"></label>
+          </div>
+          <textarea class="paste" id="pinPaste" rows="3" placeholder="Click here, then paste (Ctrl+V / ⌘V)" aria-label="Paste a pin image here"></textarea>
+        </div>
+        <div class="sub">
+          <h3>Search Pinterest</h3>
+          <div class="qlinks" id="pinQuick"></div>
+        </div>
+      </article>
+
+      <article class="card src" aria-labelledby="filmH">
+        <header><span class="src-tag">FilmGrab</span><h2 id="filmH">Film stills</h2></header>
+        <div class="row">
+          <a class="btn primary" href="https://film-grab.com/?redirect_to=random" target="_blank" rel="noopener"><svg class="i"><use href="#i-dice"/></svg>Random film</a>
+          <a class="btn" href="https://film-grab.com/movies-a-z/" target="_blank" rel="noopener">Films A–Z</a>
+        </div>
+        <div class="qlinks">
+          <a href="https://film-grab.com/browse-by-category/genre/" target="_blank" rel="noopener">By genre</a>
+          <a href="https://film-grab.com/browse-by-artist/dops-a-z/" target="_blank" rel="noopener">By cinematographer</a>
+          <a href="https://film-grab.com/browse-by-artist/directors-a-z/" target="_blank" rel="noopener">By director</a>
+          <a href="https://film-grab.com/browse-by-category/aspect-ratio/" target="_blank" rel="noopener">By aspect ratio</a>
+        </div>
+        <form class="row" id="filmSearch">
+          <input type="search" id="filmQ" placeholder="Search a film title" aria-label="Film title" style="flex:1 1 180px">
+          <a class="btn" id="filmGo" href="https://film-grab.com/" target="_blank" rel="noopener">Search<svg class="i"><use href="#i-ext"/></svg></a>
+        </form>
+        <label class="f"><span>Film title for the note</span><input type="text" id="filmTitle" placeholder="e.g. In the Mood for Love"></label>
+        <textarea class="paste" id="filmPaste" rows="3" placeholder="Copy a still on FilmGrab, then paste here → Film scenes" aria-label="Paste a film still here"></textarea>
+        <details class="more">
+          <summary>Grab frames from your own video file</summary>
+          <div class="src">
+            <label class="btn" for="fgFile" style="justify-self:start"><svg class="i"><use href="#i-upload"/></svg>Open video file</label>
+            <input type="file" id="fgFile" accept="video/*" hidden>
+            <div id="fg" class="src" hidden>
+              <video id="fgVid" playsinline muted></video>
+              <input type="range" id="fgSeek" min="0" max="1000" value="0" aria-label="Scrub">
+              <div class="fg-ctrl">
+                <button type="button" class="ibl" id="fgBack1" aria-label="Back 1 second"><svg class="i"><use href="#i-rew"/></svg></button>
+                <button type="button" class="ibl" id="fgBackF" aria-label="Back 1 frame"><svg class="i"><use href="#i-fprev"/></svg></button>
+                <button type="button" class="ibl" id="fgPlay" aria-label="Play"><svg class="i"><use href="#i-play"/></svg></button>
+                <button type="button" class="ibl" id="fgFwdF" aria-label="Forward 1 frame"><svg class="i"><use href="#i-fnext"/></svg></button>
+                <button type="button" class="ibl" id="fgFwd1" aria-label="Forward 1 second"><svg class="i"><use href="#i-ff"/></svg></button>
+                <select id="fgFps" aria-label="Frame rate"><option value="23.976">23.976 fps</option><option value="24" selected>24 fps</option><option value="25">25 fps</option><option value="30">30 fps</option></select>
+                <span class="tc" id="fgTC">00:00:00:00</span>
+              </div>
+              <button type="button" class="btn primary" id="fgGrab" style="justify-self:start"><svg class="i"><use href="#i-camera"/></svg>Grab frame</button>
+              <div class="thumbs" id="fgStrip"></div>
+            </div>
+          </div>
+        </details>
+      </article>
+
+      <article class="card src" aria-labelledby="placeH">
+        <header><span class="src-tag">MapCrunch</span><h2 id="placeH">Street View</h2></header>
+        <ol class="steps">
+          <li>Open a random view. Turn on <b>Urban</b> for streets and buildings, <b>Stealth</b> to hide the map and address.</li>
+          <li>Screenshot it: <b>Win+Shift+S</b> or <b>⌘⇧4</b>.</li>
+          <li>Paste below to keep it in Places, or start a timed study.</li>
+        </ol>
+        <div class="row">
+          <a class="btn primary" href="https://www.mapcrunch.com/" target="_blank" rel="noopener"><svg class="i"><use href="#i-dice"/></svg>Random Street View</a>
+          <a class="btn" href="https://www.mapcrunch.com/gallery" target="_blank" rel="noopener">Gallery</a>
+        </div>
+        <div class="field">
+          <div class="lbl">Timed perspective study</div>
+          <div class="chips">
+            <button type="button" class="chip" data-study="300">5 min</button>
+            <button type="button" class="chip" data-study="600">10 min</button>
+            <button type="button" class="chip" data-study="900">15 min</button>
+            <button type="button" class="chip" data-study="1800">30 min</button>
+          </div>
+        </div>
+        <label class="f"><span>Place name for the note</span><input type="text" id="placeName" placeholder="e.g. Ulcinj, Montenegro"></label>
+        <textarea class="paste" id="placePaste" rows="3" placeholder="Paste a Street View screenshot here → Places" aria-label="Paste a Street View screenshot here"></textarea>
+      </article>
+    </div>
+  </section>
+</main>
+
+<!-- SESSION PLAYER -->
+<div id="player" class="player" hidden role="dialog" aria-modal="true" aria-label="Gesture session">
+  <div class="pl-frame" id="plFrame">
+    <img id="plImg" alt="">
+    <video id="plVid" muted loop playsinline hidden></video>
+    <div class="g3" id="plGrid" hidden><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+  </div>
+  <div class="pl-break" id="plBreak" hidden>
+    <div class="lbl">Break</div>
+    <div class="pl-break-t" id="plBreakT">01:00</div>
+    <p id="plBreakNext"></p>
+    <button type="button" class="ib txt" id="plSkipBreak">Skip break</button>
+  </div>
+  <div class="pl-top">
+    <div class="pl-info">
+      <span class="pl-count" id="plCount">Pose 1 of 10</span>
+      <span class="pill" id="plDur">1m</span>
+      <span class="pill on" id="plPaused" hidden>Paused</span>
+      <span class="pl-note" id="plNote"></span>
+    </div>
+    <button type="button" class="ib txt" id="plEndBtn"><svg class="i"><use href="#i-stop"/></svg>End</button>
+  </div>
+  <div class="pl-bot">
+    <div class="pl-clock" id="plClock">01:00</div>
+    <div class="pl-ctrls">
+      <button type="button" class="ib" id="plPrev" aria-label="Previous pose"><svg class="i"><use href="#i-prev"/></svg></button>
+      <button type="button" class="ib big" id="plPause" aria-label="Pause"><svg class="i"><use href="#i-pause"/></svg></button>
+      <button type="button" class="ib" id="plNext" aria-label="Next pose"><svg class="i"><use href="#i-next"/></svg></button>
+    </div>
+    <div class="pl-opts">
+      <button type="button" class="ib" id="plGray" aria-label="Grayscale (G)" aria-pressed="false"><svg class="i"><use href="#i-gray"/></svg></button>
+      <button type="button" class="ib" id="plFlip" aria-label="Mirror (F)" aria-pressed="false"><svg class="i"><use href="#i-flip"/></svg></button>
+      <button type="button" class="ib" id="plGridBtn" aria-label="Thirds grid (T)" aria-pressed="false"><svg class="i"><use href="#i-grid"/></svg></button>
+      <button type="button" class="ib" id="plSound" aria-label="Sound cues (S)" aria-pressed="true"><svg class="i"><use href="#i-sound"/></svg></button>
+      <button type="button" class="ib" id="plFs" aria-label="Fullscreen"><svg class="i"><use href="#i-expand"/></svg></button>
+      <div class="pl-keys">Space pause · ←/→ skip<br>G gray · F mirror · T grid</div>
+    </div>
+  </div>
+  <div class="pl-bar"><i id="plBar"></i></div>
+  <div class="pl-end" id="plEnd" hidden>
+    <div class="pl-end-in">
+      <div class="lbl" id="plEndKicker">Session</div>
+      <h2 id="plEndTitle">Session complete</h2>
+      <div class="pl-stats" id="plStats"></div>
+      <div class="pl-thumbs" id="plThumbs"></div>
+      <div class="row">
+        <button type="button" class="btn primary big" id="plAgain"><svg class="i"><use href="#i-play"/></svg>Run it again</button>
+        <button type="button" class="btn big" id="plDone">Back to setup</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REFERENCE VIEWER -->
+<div id="viewer" class="viewer" hidden role="dialog" aria-modal="true" aria-label="Reference viewer">
+  <div class="vw-stage" id="vwStage">
+    <div class="vw-pan" id="vwPan">
+      <img id="vwImg" alt="" draggable="false">
+      <video id="vwVid" muted loop playsinline hidden></video>
+      <canvas id="vwCanvas" hidden></canvas>
+      <div class="g3" id="vwGrid" hidden><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+    </div>
+    <button type="button" class="vw-nav prev" id="vwPrevRef" aria-label="Previous reference"><svg class="i"><use href="#i-prev"/></svg></button>
+    <button type="button" class="vw-nav next" id="vwNextRef" aria-label="Next reference"><svg class="i"><use href="#i-next"/></svg></button>
+  </div>
+  <div class="vw-top">
+    <div class="vw-info"><b id="vwTitle"></b><span id="vwNote"></span><a id="vwLink" target="_blank" rel="noopener" hidden>Open source ↗</a></div>
+    <div class="vw-study">
+      <span class="t" id="vwStudyT"></span>
+      <select class="stage-in" id="vwStudyDur" aria-label="Study length"><option value="120">2 min</option><option value="300" selected>5 min</option><option value="600">10 min</option><option value="900">15 min</option></select>
+      <button type="button" class="ib" id="vwStudyBtn" aria-label="Start study timer"><svg class="i"><use href="#i-timer"/></svg></button>
+    </div>
+    <button type="button" class="ib" id="vwClose" aria-label="Close viewer"><svg class="i"><use href="#i-close"/></svg></button>
+  </div>
+  <div class="vw-bar">
+    <div class="grp">
+      <button type="button" class="ib" id="vwZout" aria-label="Zoom out"><svg class="i"><use href="#i-zout"/></svg></button>
+      <button type="button" class="zoomlbl" id="vwZoom" aria-label="Fit to screen">Fit</button>
+      <button type="button" class="ib" id="vwZin" aria-label="Zoom in"><svg class="i"><use href="#i-zin"/></svg></button>
+    </div>
+    <div class="grp">
+      <button type="button" class="ib" id="vwFlip" aria-label="Mirror (F)" aria-pressed="false"><svg class="i"><use href="#i-flip"/></svg></button>
+      <button type="button" class="ib" id="vwGray" aria-label="Grayscale (G)" aria-pressed="false"><svg class="i"><use href="#i-gray"/></svg></button>
+      <button type="button" class="ib" id="vwGridBtn" aria-label="Thirds grid (T)" aria-pressed="false"><svg class="i"><use href="#i-grid"/></svg></button>
+      <button type="button" class="ib txt" id="vwValues" aria-label="Value study (V)"><svg class="i"><use href="#i-values"/></svg><span id="vwValuesLbl">Values</span></button>
+      <label class="thr" id="vwThrWrap" hidden>Split <input type="range" id="vwThr" min="10" max="245" value="128"></label>
+    </div>
+    <div class="grp" id="vwFrames" hidden>
+      <button type="button" class="ib" id="vwFPrev" aria-label="Previous frame (,)"><svg class="i"><use href="#i-fprev"/></svg></button>
+      <button type="button" class="ib" id="vwFPlay" aria-label="Play or pause"><svg class="i"><use href="#i-pause"/></svg></button>
+      <button type="button" class="ib" id="vwFNext" aria-label="Next frame (.)"><svg class="i"><use href="#i-fnext"/></svg></button>
+      <span class="fno" id="vwFrameNo">—</span>
+      <button type="button" class="ib txt" id="vwSpeed" aria-label="Playback speed">1×</button>
+    </div>
+    <div class="grp" id="vwOwn">
+      <button type="button" class="ib" id="vwEditBtn" aria-label="Edit note and board"><svg class="i"><use href="#i-edit"/></svg></button>
+      <button type="button" class="ib" id="vwDel" aria-label="Delete reference"><svg class="i"><use href="#i-trash"/></svg></button>
+    </div>
+  </div>
+  <form class="vw-edit" id="vwEdit" hidden>
+    <label class="f"><span>Note</span><input type="text" id="vwNoteIn" maxlength="140"></label>
+    <label class="f"><span>Source link</span><input type="url" id="vwLinkIn" placeholder="https://"></label>
+    <label class="f"><span>Board</span><select id="vwBoardSel"></select></label>
+    <div class="row"><button type="submit" class="btn primary">Save</button><button type="button" class="btn" id="vwEditCancel">Cancel</button></div>
+  </form>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-card" role="alertdialog" aria-modal="true" aria-labelledby="modalMsg">
+    <p id="modalMsg"></p>
+    <div class="row"><button type="button" class="btn" id="modalCancel">Cancel</button><button type="button" class="btn danger" id="modalOk">Delete</button></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="/assets/app.js"></script>
+</body>
+</html>

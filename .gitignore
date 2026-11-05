@@ -1,0 +1,5 @@
+node_modules/
+.DS_Store
+*.zip
+# written by scripts/sync-boards.js during deploy and local previews
+app/data/
