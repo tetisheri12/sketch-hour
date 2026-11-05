@@ -245,7 +245,10 @@ function pinRefs(b) {
   pinRefCache.set(b.id, { at: b.pinterest.syncedAt, refs });
   return refs;
 }
-function setImg(el, r) { el.src = srcOf(r); }
+// The page sends no referrer (so Pinterest isn't told which page you're on). The Art Institute of Chicago's
+// image server refuses requests without one, so museum images send just the site's address.
+function refPol(src) { return /^https:\/\/www\.artic\.edu\//.test(src || '') ? 'origin' : 'no-referrer'; }
+function setImg(el, r) { const s = srcOf(r); el.referrerPolicy = refPol(s); el.src = s; }
 async function loadPublished() {
   try {
     const r = await fetch(BASE + 'data/boards.json', { cache: 'no-cache' });
@@ -295,7 +298,7 @@ function errText(e) {
 }
 
 /* ============ adding references ============ */
-function loadImg(src, cors) { return new Promise((res, rej) => { const i = new Image(); if (cors) i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
+function loadImg(src, cors) { return new Promise((res, rej) => { const i = new Image(); if (cors) i.crossOrigin = 'anonymous'; i.referrerPolicy = refPol(src); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
 function mediaDims(file) {
   const u = URL.createObjectURL(file);
   if (/^video\//.test(file.type)) {
@@ -688,7 +691,7 @@ function showEntry() {
     $('#plNote').textContent = e.ref.note || boardName(e.ref.board);
     setStageMedia(e.ref);
     const nx = P.plan.slice(P.i + 1).find(x => x.t === 'pose');
-    if (nx && nx.ref.kind !== 'video') { const im = new Image(); im.referrerPolicy = 'no-referrer'; im.src = srcOf(nx.ref); }
+    if (nx && nx.ref.kind !== 'video') { const im = new Image(); im.referrerPolicy = refPol(srcOf(nx.ref)); im.src = srcOf(nx.ref); }
   }
   applyPlayerLooks(); drawPlayerClock();
 }
@@ -2541,7 +2544,7 @@ function renderOverview() {
       h('div', { class: 'row' },
         h('button', { type: 'button', class: 'btn primary', onclick: () => { location.hash = '#learn/' + nx.id; } }, icon('play'), p.d ? 'Continue' : 'Open unit'),
         h('span', { class: 'muted' }, `${p.d} of ${p.n} exercises done`)),
-      (() => { const e = nx.ex.find(x => x.set); return e ? h('div', { class: 'ln-peek', 'aria-hidden': 'true' }, ...setRefs(e.set).slice(0, 8).map(r => h('img', { src: r.thumb, alt: '', loading: 'lazy', width: Math.round(96 * r.w / r.h), height: 96 }))) : null; })());
+      (() => { const e = nx.ex.find(x => x.set); return e ? h('div', { class: 'ln-peek', 'aria-hidden': 'true' }, ...setRefs(e.set).slice(0, 8).map(r => h('img', { referrerpolicy: refPol(r.thumb), src: r.thumb, alt: '', loading: 'lazy', width: Math.round(96 * r.w / r.h), height: 96 }))) : null; })());
   } else {
     next.replaceChildren(h('span', { class: 'lbl' }, 'Curriculum complete'), h('h3', null, 'Every unit is done.'),
       h('p', null, 'Go round again with longer poses, or pick any track to keep practicing.'));
@@ -2607,7 +2610,7 @@ function renderUnit(u) {
       return h('div', { class: 'ln-set' },
         h('div', { class: 'ln-set-head' }, h('b', null, s.name), h('span', { class: 'ln-credit' }, `${list.length} images · ${s.credit}`)),
         h('div', { class: 'ln-strip' }, ...list.slice(0, 24).map((r, k) => h('button', { type: 'button', title: r.note, onclick: () => openViewer(list, k) },
-          h('img', { src: r.thumb, alt: r.note, loading: 'lazy', width: Math.round(120 * r.w / r.h), height: 120 })))));
+          h('img', { referrerpolicy: refPol(r.thumb), src: r.thumb, alt: r.note, loading: 'lazy', width: Math.round(120 * r.w / r.h), height: 120 })))));
     })) : null,
     h('nav', { class: 'ln-nav' },
       prev ? h('button', { type: 'button', class: 'btn', onclick: () => { location.hash = '#learn/' + prev.id; } }, '← ' + unitLabel(prev)) : h('span'),
