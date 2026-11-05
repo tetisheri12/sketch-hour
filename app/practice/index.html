@@ -8,6 +8,7 @@
 <title>Practice · Sketch Hour</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M7 29.5c1.6-8.6 6-15 14.5-20.4' fill='none' stroke='%238d9cb7' stroke-width='3.2' stroke-linecap='round'/%3E%3Cellipse cx='24.6' cy='6.2' rx='3.3' ry='4' transform='rotate(32 24.6 6.2)' fill='none' stroke='%23515e7e' stroke-width='2'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/assets/styles.css">
+<link rel="stylesheet" href="/assets/studio.css">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -38,6 +39,12 @@
   <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
   <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
   <symbol id="i-dice" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.2" fill="currentColor"/><circle cx="15" cy="15" r="1.2" fill="currentColor"/><circle cx="15" cy="9" r="1.2" fill="currentColor"/><circle cx="9" cy="15" r="1.2" fill="currentColor"/></symbol>
+  <symbol id="i-crop" viewBox="0 0 24 24"><path d="M7 3v14h14"/><path d="M3 7h14v14"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 4l8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4"/><path d="M4 16l8 4 8-4"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11.5M7 11l5 5 5-5"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></symbol>
+  <symbol id="i-points" viewBox="0 0 24 24"><circle cx="6" cy="17" r="2.5"/><circle cx="18" cy="7" r="2.5"/><path d="M8 15.4l8-7" stroke-dasharray="2 2.5"/></symbol>
+  <symbol id="i-corners" viewBox="0 0 24 24"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><path d="M8.5 8l7.5 1-1 7-7.5-1z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
 </svg>
 
 <header class="top">
@@ -51,6 +58,7 @@
       <a class="tab" href="#library" data-view="library">Library</a>
       <a class="tab" href="#timer" data-view="timer">Timer</a>
       <a class="tab" href="#sources" data-view="sources">Sources</a>
+      <a class="tab" href="#studio" data-view="studio">Studio</a>
     </nav>
     <div class="status" id="status" data-kind="busy" role="status"><i></i><span id="statusText">Connecting…</span></div>
   </div>
@@ -276,6 +284,152 @@
       </article>
     </div>
   </section>
+  <!-- STUDIO -->
+  <section id="v-studio" class="view" aria-label="Studio" hidden>
+    <div class="st-head">
+      <div class="seg" id="stModeSeg" role="group" aria-label="Studio tool">
+        <button type="button" data-mode="compose">Compose</button>
+        <button type="button" data-mode="compare">Compare</button>
+      </div>
+      <div class="st-row">
+        <span class="st-name" id="stRefName"></span>
+        <label class="btn" for="stRefFile"><svg class="i"><use href="#i-upload"/></svg><span id="stRefBtnLabel">Upload reference</span></label>
+        <input type="file" id="stRefFile" accept="image/*" hidden>
+      </div>
+    </div>
+    <div class="st-body">
+      <div class="st-stage" id="stStage">
+        <canvas id="stCanvas" aria-label="Studio canvas"></canvas>
+        <div class="st-empty" id="stEmpty">
+          <h2>Start with a reference</h2>
+          <p>Upload or paste an image, drop it here, or open any reference in the Library and press the Compose or Compare button.</p>
+          <div class="st-row">
+            <label class="btn primary" for="stRefFile"><svg class="i"><use href="#i-upload"/></svg>Upload reference</label>
+            <button type="button" class="btn" id="stSample">Try a sample</button>
+          </div>
+        </div>
+        <div class="st-hint" id="stHint" hidden></div>
+      </div>
+
+      <aside class="card st-panel" aria-label="Studio controls">
+        <p class="st-small" id="stNoRef">Compose a reference with composition guides and a free frame, fix it, and draw it. Then lay a photo of your drawing over the reference to check it.</p>
+
+        <div class="st-box" id="stComposeBox" hidden>
+          <div class="st-sec">
+            <h2 id="stComposeTitle">Compose</h2>
+            <p class="st-small" id="stComposeLead"></p>
+          </div>
+          <div class="st-sec st-edit">
+            <div class="lbl">Frame shape</div>
+            <div class="chips" id="stRatios"></div>
+            <div class="st-row">
+              <button type="button" class="btn sm" id="stOrient">Make it landscape</button>
+              <button type="button" class="btn sm" id="stFill">Largest frame</button>
+            </div>
+          </div>
+          <div class="st-sec st-fixed" hidden>
+            <div class="lbl">Study timer</div>
+            <div class="chips" id="stDurs"></div>
+            <div class="st-row">
+              <button type="button" class="btn primary" id="stDrawStart"><svg class="i"><use href="#i-play"/></svg><span>Start drawing</span></button>
+              <span class="st-clock" id="stClock">15:00</span>
+            </div>
+          </div>
+          <div class="st-sec">
+            <div class="lbl">Guides</div>
+            <div class="chips" id="stGuides"></div>
+            <div class="st-row" id="stGridRow" hidden>
+              <span class="st-step">Grid <button type="button" class="btn sm" id="stGridMinus" aria-label="Fewer grid lines">−</button><span id="stGridN">4 × 4</span><button type="button" class="btn sm" id="stGridPlus" aria-label="More grid lines">+</button></span>
+            </div>
+            <div class="st-row" id="stFlipRow" hidden>
+              <button type="button" class="btn sm" id="stFlipH">Flip across</button>
+              <button type="button" class="btn sm" id="stFlipV">Flip up/down</button>
+            </div>
+            <div class="st-row"><span class="st-small">Lines</span><div class="chips" id="stTones"></div></div>
+          </div>
+          <div class="st-sec st-edit">
+            <div class="lbl">Outside the frame</div>
+            <div class="seg" id="stBorderSeg" role="group" aria-label="Outside the frame">
+              <button type="button" data-b="black">Black</button>
+              <button type="button" data-b="dim">Dimmed</button>
+            </div>
+            <p class="st-readout" id="stReadout"></p>
+            <button type="button" class="btn primary big" id="stFix"><svg class="i"><use href="#i-lock"/></svg>Fix composition</button>
+          </div>
+          <div class="st-sec st-fixed" hidden>
+            <div class="lbl">Keep it</div>
+            <div class="st-row">
+              <select id="stSaveBoard" aria-label="Board to save into"></select>
+              <button type="button" class="btn" id="stSaveBtn">Save to Library</button>
+            </div>
+            <div class="st-row">
+              <button type="button" class="btn sm" id="stDownload"><svg class="i"><use href="#i-download"/></svg>Download with guides</button>
+              <button type="button" class="btn sm" id="stDownloadPlain">Download image only</button>
+            </div>
+            <div class="st-row">
+              <button type="button" class="btn primary" id="stToCompare"><svg class="i"><use href="#i-layers"/></svg>Compare with my sketch</button>
+              <button type="button" class="btn" id="stUnfix">Change composition</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="st-box" id="stCompareBox" hidden>
+          <div class="st-sec">
+            <h2>Compare</h2>
+            <p class="st-small" id="stCmpAgainst"></p>
+          </div>
+          <div class="st-sec">
+            <div class="lbl">Your sketch</div>
+            <div class="st-row">
+              <label class="btn primary" for="stSketchFile"><svg class="i"><use href="#i-upload"/></svg><span id="stSketchBtnLabel">Upload a photo</span></label>
+              <input type="file" id="stSketchFile" accept="image/*" hidden>
+            </div>
+            <p class="st-small">Photograph your drawing straight on in even light, or paste a scan with Ctrl+V / ⌘V.</p>
+          </div>
+          <div class="st-box" id="stCmpTools" hidden>
+            <div class="st-sec">
+              <div class="lbl">Line it up</div>
+              <div class="st-row" id="stLineupBtns">
+                <button type="button" class="btn sm" id="stCorners"><svg class="i"><use href="#i-corners"/></svg>Straighten</button>
+                <button type="button" class="btn sm" id="stTwoPts"><svg class="i"><use href="#i-points"/></svg>Two points</button>
+                <button type="button" class="btn sm" id="stFitSk">Fit</button>
+                <button type="button" class="btn sm" id="stUnstraighten" hidden>Use original photo</button>
+              </div>
+              <div class="st-row" id="stCornersBar" hidden>
+                <button type="button" class="btn primary sm" id="stCornersApply">Apply</button>
+                <button type="button" class="btn sm" id="stCornersCancel">Cancel</button>
+              </div>
+              <div class="st-row" id="stAlignBar" hidden>
+                <button type="button" class="btn sm" id="stAlignCancel">Cancel</button>
+              </div>
+              <label class="st-range"><span>Rotate</span><input type="range" id="stRot" min="-45" max="45" step="0.5" value="0"><span id="stRotV">0°</span></label>
+              <p class="st-small">Drag to move the sketch. Scroll or pinch to resize; Shift + scroll rotates.</p>
+            </div>
+            <div class="st-sec">
+              <div class="lbl">Show</div>
+              <div class="seg" id="stViewSeg" role="group" aria-label="How to show the sketch">
+                <button type="button" data-v="lines">Lines</button>
+                <button type="button" data-v="multiply">Pencil</button>
+                <button type="button" data-v="photo">Photo</button>
+              </div>
+              <label class="st-range"><span>Sketch</span><input type="range" id="stOpacity" min="0" max="100" value="90"><span id="stOpacityV">90%</span></label>
+              <label class="st-range" id="stStrengthRow"><span>Pick up</span><input type="range" id="stStrength" min="0" max="100" value="50"><span id="stStrengthV">50</span></label>
+              <div id="stColorRow"><div class="chips" id="stLineColors"></div></div>
+              <label class="st-range"><span>Reference</span><input type="range" id="stRefFade" min="15" max="100" value="100"><span id="stRefFadeV">100%</span></label>
+              <div class="st-row">
+                <button type="button" class="btn sm" id="stPeek">Hold to hide sketch</button>
+                <label class="tg"><input type="checkbox" id="stFlicker"> Flicker</label>
+              </div>
+            </div>
+            <div class="st-row">
+              <button type="button" class="btn" id="stCmpDownload"><svg class="i"><use href="#i-download"/></svg>Download</button>
+              <button type="button" class="btn" id="stSketchClear">Remove sketch</button>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
 </main>
 
 <!-- SESSION PLAYER -->
@@ -371,6 +525,10 @@
       <button type="button" class="ib" id="vwFNext" aria-label="Next frame (.)"><svg class="i"><use href="#i-fnext"/></svg></button>
       <span class="fno" id="vwFrameNo">—</span>
       <button type="button" class="ib txt" id="vwSpeed" aria-label="Playback speed">1×</button>
+    </div>
+    <div class="grp" id="vwStudio">
+      <button type="button" class="ib" id="vwCompose" aria-label="Compose in the Studio"><svg class="i"><use href="#i-crop"/></svg></button>
+      <button type="button" class="ib" id="vwCompare" aria-label="Compare a sketch in the Studio"><svg class="i"><use href="#i-layers"/></svg></button>
     </div>
     <div class="grp" id="vwOwn">
       <button type="button" class="ib" id="vwEditBtn" aria-label="Edit note and board"><svg class="i"><use href="#i-edit"/></svg></button>

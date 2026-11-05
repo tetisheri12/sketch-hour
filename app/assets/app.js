@@ -852,6 +852,8 @@ function renderTimerClock() {
   const dg = $('#tDigits'); dg.textContent = d; dg.classList.toggle('rest', T.resting);
   const active = T.running || (T.left > 0 && T.left < T.total);
   $('#vwStudyT').textContent = active ? d : '';
+  const sc = $('#stClock');
+  if (sc) sc.textContent = T.label === 'Composition study' && active ? d : clock(ST.drawDur);
   renderTimerBar();
 }
 function renderTimer() {
@@ -876,6 +878,12 @@ function renderTimer() {
   setIcon(vb, T.running ? 'pause' : 'timer');
   vb.setAttribute('aria-label', T.running ? 'Pause study timer' : 'Start study timer');
   vb.setAttribute('aria-pressed', String(T.running));
+  const sd = $('#stDrawStart');
+  if (sd) {
+    const ours = T.label === 'Composition study';
+    sd.querySelector('span').textContent = ours && T.running ? 'Pause' : ours && T.left > 0 && T.left < T.total ? 'Resume' : 'Start drawing';
+    setIcon(sd, ours && T.running ? 'pause' : 'play');
+  }
 }
 function startStudy(sec, label) {
   tSet(sec, label);
@@ -1478,8 +1486,825 @@ async function genSamples() {
   S.samplesReady = true; renderAll();
 }
 
+/* ============ studio: composition checker + sketch comparison ============ */
+const PHI = (1 + Math.sqrt(5)) / 2;
+const ST_RATIOS = [
+  { id: 'free', label: 'Free' }, { id: 'orig', label: 'Original' },
+  { id: '1:1', r: 1 }, { id: '4:5', r: 4 / 5 }, { id: '3:4', r: 3 / 4 }, { id: '2:3', r: 2 / 3 },
+  { id: '9:16', r: 9 / 16 }, { id: 'a4', r: 1 / Math.SQRT2, label: 'A4' }, { id: 'cine', r: 1 / 2.39 }
+];
+const ST_GUIDES = [
+  ['thirds', 'Thirds'], ['phi', 'Golden grid'], ['spiral', 'Golden spiral'], ['diag', 'Diagonals'],
+  ['tri', 'Golden triangles'], ['armature', 'Dynamic symmetry'], ['center', 'Center'], ['grid', 'Grid']
+];
+const ST_TONES = [['light', 'Light'], ['dark', 'Dark'], ['accent', 'Accent']];
+const ST_COLORS = [['red', 'Red', '#e5383b'], ['blue', 'Blue', '#2f6fde'], ['green', 'Green', '#1f9d55'], ['black', 'Black', '#141414']];
+const ST_VIEWS = [['lines', 'Lines'], ['multiply', 'Pencil'], ['photo', 'Photo']];
+const ST_DURS = [300, 600, 900, 1800];
+
+const ST = Object.assign({
+  mode: 'compose', ref: null, refName: '', frame: null, ratio: 'orig', landscape: false,
+  guides: ['thirds'], gridN: 4, flipH: false, flipV: false, tone: 'light', border: 'black',
+  fixed: false, crop: null, drawDur: 900,
+  sketch: null, sketchOrig: null, sketchVer: 0, layers: null, layersKey: '', straightened: false,
+  xf: { s: 1, r: 0, tx: 0, ty: 0 }, cmpKey: '',
+  view: 'lines', opacity: 0.9, strength: 50, lineColor: 'red', refFade: 1,
+  peek: false, flicker: false, flickOn: true, align: null, corners: null,
+  L: null, drag: null
+}, (() => {
+  const s = LS.get('sketchhour.studio', {});
+  const keep = {};
+  for (const k of ['guides', 'gridN', 'tone', 'border', 'view', 'opacity', 'strength', 'lineColor', 'drawDur']) if (s[k] != null) keep[k] = s[k];
+  return keep;
+})());
+let stGuides = new Set(Array.isArray(ST.guides) ? ST.guides : ['thirds']);
+function stSave() {
+  LS.set('sketchhour.studio', { guides: [...stGuides], gridN: ST.gridN, tone: ST.tone, border: ST.border, view: ST.view, opacity: ST.opacity, strength: ST.strength, lineColor: ST.lineColor, drawDur: ST.drawDur });
+}
+
+/* ---------- loading ---------- */
+function stCanvas(w, hh) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(hh)); return c; }
+async function stLoadRef(src, name, remote) {
+  let img = null, clean = true;
+  try {
+    if (src instanceof Blob) img = await loadImg(URL.createObjectURL(src));
+    else if (remote) { try { img = await loadImg(src, true); } catch { img = await loadImg(src); clean = false; } }
+    else img = await loadImg(src);
+  } catch { img = null; }
+  if (!img || !img.naturalWidth) { toast("That image couldn't be opened. Try a JPG, PNG or WebP."); return; }
+  ST.ref = { img, w: img.naturalWidth, h: img.naturalHeight, clean };
+  ST.refName = (name || 'Reference').slice(0, 80);
+  ST.fixed = false; ST.crop = null; ST.align = null; ST.corners = null;
+  ST.ratio = 'orig'; ST.landscape = ST.ref.w > ST.ref.h;
+  ST.frame = { x: 0, y: 0, w: ST.ref.w, h: ST.ref.h };
+  ST.cmpKey = '';
+  stRender();
+}
+async function stLoadSketch(file) {
+  let src = null;
+  try { src = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+  catch { try { src = await loadImg(URL.createObjectURL(file)); } catch { src = null; } }
+  if (!src) { toast("That photo couldn't be opened. Try a JPG or PNG."); return; }
+  const w = src.width || src.naturalWidth, hh = src.height || src.naturalHeight, k = Math.min(1, 2000 / Math.max(w, hh));
+  const c = stCanvas(w * k, hh * k);
+  c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+  ST.sketchOrig = c; ST.sketch = c; ST.sketchVer++; ST.straightened = false;
+  ST.align = null; ST.corners = null; ST.peek = false;
+  stFitSketch();
+  stRender();
+  toast('Sketch added. Line it up by dragging, or use Straighten and Two points.');
+}
+function stHandleFile(file) {
+  if (!file || !/^image\//.test(file.type)) { toast('Use an image file: JPG, PNG, WebP or GIF.'); return; }
+  if (ST.mode === 'compare' && ST.ref) stLoadSketch(file);
+  else stLoadRef(file, file.name.replace(/\.[^.]+$/, ''));
+}
+function stSample() {
+  const pick = ST.mode === 'compare' ? (S.samples.poses[7] || S.samples.poses[0]) : (S.samples.places[2] || S.samples.poses[0]);
+  if (!pick) { toast('Samples are still being drawn. Try again in a moment.'); return; }
+  stLoadRef(pick.url, pick.note);
+}
+function stFromViewer(mode) {
+  const r = V.list[V.i]; if (!r) return;
+  if (r.kind === 'video') { toast('The Studio works with still images.'); return; }
+  closeViewer();
+  ST.mode = mode;
+  location.hash = '#studio';
+  stLoadRef(srcOf(r), r.note || boardName(r.board), !!r.remote);
+}
+
+/* ---------- frame ---------- */
+function stAspect() {
+  if (ST.ratio === 'free') return null;
+  if (ST.ratio === 'orig') return ST.ref.w / ST.ref.h;
+  const r = ST_RATIOS.find(x => x.id === ST.ratio).r;
+  return ST.landscape ? 1 / r : r;
+}
+function stRatioLabel(o) {
+  if (o.id === 'free' || o.id === 'orig') return o.label;
+  if (o.id === 'a4') return ST.landscape ? 'A4 landscape' : 'A4';
+  if (o.id === 'cine') return ST.landscape ? '2.39:1' : '1:2.39';
+  const [a, b] = o.id.split(':');
+  return ST.landscape && a !== b ? `${b}:${a}` : o.id;
+}
+function stClampFrame(f) {
+  const W = ST.ref.w, H = ST.ref.h;
+  f.w = Math.min(f.w, W); f.h = Math.min(f.h, H);
+  f.x = Math.max(0, Math.min(W - f.w, f.x)); f.y = Math.max(0, Math.min(H - f.h, f.y));
+  return f;
+}
+function stReshape() {
+  const f = ST.frame, a = stAspect(), W = ST.ref.w, H = ST.ref.h;
+  if (!a) return;
+  const cx = f.x + f.w / 2, cy = f.y + f.h / 2;
+  let w = Math.sqrt(f.w * f.h * a), hh = w / a;
+  if (w > W) { w = W; hh = w / a; }
+  if (hh > H) { hh = H; w = hh * a; }
+  ST.frame = stClampFrame({ x: cx - w / 2, y: cy - hh / 2, w, h: hh });
+}
+function stLargest() {
+  const W = ST.ref.w, H = ST.ref.h, a = stAspect();
+  let w = W, hh = H;
+  if (a) { if (W / H > a) { hh = H; w = H * a; } else { w = W; hh = W / a; } }
+  const f = ST.frame || { x: 0, y: 0, w: W, h: H };
+  ST.frame = stClampFrame({ x: f.x + f.w / 2 - w / 2, y: f.y + f.h / 2 - hh / 2, w, h: hh });
+}
+function stScaleFrame(fac) {
+  const f = ST.frame, a = stAspect() || f.w / f.h, min = 0.04 * Math.min(ST.ref.w, ST.ref.h);
+  let w = Math.max(min, f.w * fac), hh = w / a;
+  if (hh < min) { hh = min; w = hh * a; }
+  if (w > ST.ref.w) { w = ST.ref.w; hh = w / a; }
+  if (hh > ST.ref.h) { hh = ST.ref.h; w = hh * a; }
+  ST.frame = stClampFrame({ x: f.x + f.w / 2 - w / 2, y: f.y + f.h / 2 - hh / 2, w, h: hh });
+}
+
+/* ---------- geometry for guides ---------- */
+function stFoot(px, py, ax, ay, bx, by) { const dx = bx - ax, dy = by - ay, t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy); return [ax + t * dx, ay + t * dy]; }
+function stRay(cx, cy, nx, ny, w, hh) {
+  let t = Infinity;
+  if (nx > 1e-9) t = Math.min(t, (w - cx) / nx); else if (nx < -1e-9) t = Math.min(t, -cx / nx);
+  if (ny > 1e-9) t = Math.min(t, (hh - cy) / ny); else if (ny < -1e-9) t = Math.min(t, -cy / ny);
+  return [cx + t * nx, cy + t * ny];
+}
+function stSpiral(ctx, withSquares) {
+  let x = 0, y = 0, w = PHI, hh = 1;
+  for (let i = 0; i < 12; i++) {
+    const s = Math.min(w, hh), k = i % 4;
+    if (withSquares) {
+      if (k === 0) { ctx.moveTo(x + s, y); ctx.lineTo(x + s, y + hh); }
+      else if (k === 1) { ctx.moveTo(x, y + s); ctx.lineTo(x + w, y + s); }
+      else if (k === 2) { ctx.moveTo(x + w - s, y); ctx.lineTo(x + w - s, y + hh); }
+      else { ctx.moveTo(x, y + hh - s); ctx.lineTo(x + w, y + hh - s); }
+    } else {
+      if (i === 0) ctx.moveTo(x, y + s);
+      if (k === 0) ctx.arc(x + s, y + s, s, Math.PI, 1.5 * Math.PI);
+      else if (k === 1) ctx.arc(x, y + s, s, 1.5 * Math.PI, 2 * Math.PI);
+      else if (k === 2) ctx.arc(x + w - s, y, s, 0, 0.5 * Math.PI);
+      else ctx.arc(x + s, y + hh - s, s, 0.5 * Math.PI, Math.PI);
+    }
+    if (k === 0) { x += s; w -= s; } else if (k === 1) { y += s; hh -= s; } else if (k === 2) { w -= s; } else { hh -= s; }
+  }
+}
+function stToneColors() {
+  if (ST.tone === 'dark') return ['rgba(255,255,255,.55)', '#141414'];
+  if (ST.tone === 'accent') {
+    const c = getComputedStyle(document.documentElement).getPropertyValue('--lavender-grey').trim() || '#8d9cb7';
+    return ['rgba(0,0,0,.6)', c];
+  }
+  return ['rgba(0,0,0,.55)', '#ffffff'];
+}
+/* Draws the selected guides inside the rectangle (x, y, w, h). lw scales line widths for exports. */
+function stDrawGuides(ctx, x, y, w, hh, lw) {
+  lw = lw || 1;
+  const [halo, col] = stToneColors();
+  const stroke = (build, alpha, flips) => {
+    ctx.save();
+    ctx.translate(x, y);
+    if (flips) {
+      if (ST.flipH) { ctx.translate(w, 0); ctx.scale(-1, 1); }
+      if (ST.flipV) { ctx.translate(0, hh); ctx.scale(1, -1); }
+    }
+    ctx.beginPath();
+    build();
+    ctx.restore();
+    ctx.globalAlpha = alpha || 1;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.lineWidth = 3 * lw; ctx.strokeStyle = halo; ctx.stroke();
+    ctx.lineWidth = 1.25 * lw; ctx.strokeStyle = col; ctx.stroke();
+    ctx.globalAlpha = 1;
+  };
+  const lines = fr => { for (const f of fr) { ctx.moveTo(f * w, 0); ctx.lineTo(f * w, hh); ctx.moveTo(0, f * hh); ctx.lineTo(w, f * hh); } };
+  if (stGuides.has('thirds')) stroke(() => lines([1 / 3, 2 / 3]));
+  if (stGuides.has('phi')) stroke(() => lines([1 - 1 / PHI, 1 / PHI]));
+  if (stGuides.has('center')) stroke(() => lines([0.5]));
+  if (stGuides.has('grid')) { const n = ST.gridN; stroke(() => lines(Array.from({ length: n - 1 }, (_, i) => (i + 1) / n)), 0.85); }
+  if (stGuides.has('diag')) stroke(() => { ctx.moveTo(0, 0); ctx.lineTo(w, hh); ctx.moveTo(w, 0); ctx.lineTo(0, hh); });
+  if (stGuides.has('tri')) stroke(() => {
+    ctx.moveTo(0, hh); ctx.lineTo(w, 0);
+    const a = stFoot(0, 0, 0, hh, w, 0), b = stFoot(w, hh, 0, hh, w, 0);
+    ctx.moveTo(0, 0); ctx.lineTo(a[0], a[1]); ctx.moveTo(w, hh); ctx.lineTo(b[0], b[1]);
+  }, 1, true);
+  if (stGuides.has('armature')) stroke(() => {
+    ctx.moveTo(0, 0); ctx.lineTo(w, hh); ctx.moveTo(w, 0); ctx.lineTo(0, hh);
+    const ends = [[w, 0, -hh, w], [0, hh, hh, -w], [0, 0, hh, w], [w, hh, -hh, -w]];
+    for (const [cx, cy, nx, ny] of ends) { const e = stRay(cx, cy, nx, ny, w, hh); ctx.moveTo(cx, cy); ctx.lineTo(e[0], e[1]); }
+  });
+  if (stGuides.has('spiral')) {
+    const unit = build => () => {
+      if (w >= hh) ctx.scale(w / PHI, hh);
+      else { ctx.scale(w, hh / PHI); ctx.transform(0, 1, 1, 0, 0, 0); }
+      build();
+    };
+    stroke(unit(() => stSpiral(ctx, true)), 0.45, true);
+    stroke(unit(() => stSpiral(ctx, false)), 1, true);
+  }
+}
+
+/* ---------- drawing ---------- */
+function stFit(w, hh) {
+  const st = $('#stStage'), W = st.clientWidth, H = st.clientHeight, pad = W < 500 ? 12 : 24;
+  const k = Math.max(0.0001, Math.min((W - pad * 2) / w, (H - pad * 2) / hh));
+  return { k, ox: (W - w * k) / 2, oy: (H - hh * k) / 2, W, H };
+}
+function stCmpRef() {
+  if (!ST.ref) return null;
+  return ST.fixed && ST.crop ? { img: ST.crop, w: ST.crop.width, h: ST.crop.height } : { img: ST.ref.img, w: ST.ref.w, h: ST.ref.h };
+}
+function stFitSketch() {
+  const ref = stCmpRef(), sk = ST.sketch;
+  if (!ref || !sk) return;
+  const s = Math.min(ref.w / sk.width, ref.h / sk.height);
+  ST.xf = { s, r: 0, tx: (ref.w - sk.width * s) / 2, ty: (ref.h - sk.height * s) / 2 };
+  ST.cmpKey = ref.w + 'x' + ref.h;
+}
+let stRaf = 0;
+function stDraw() {
+  if (stRaf) return;
+  stRaf = requestAnimationFrame(() => { stRaf = 0; stPaint(); });
+}
+function stPaint() {
+  const stage = $('#stStage'), c = $('#stCanvas');
+  if (!stage || stage.offsetParent === null) return;
+  const W = stage.clientWidth, H = stage.clientHeight, dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (!W || !H) return;
+  if (c.width !== Math.round(W * dpr) || c.height !== Math.round(H * dpr)) { c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); }
+  const ctx = c.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, c.width, c.height);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingQuality = 'high';
+  if (!ST.ref) return;
+  if (ST.mode === 'compose') stPaintCompose(ctx); else stPaintCompare(ctx);
+}
+function stHandle(ctx, x, y, r) {
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffffff'; ctx.fill();
+  ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.stroke();
+}
+function stFrameHandles() {
+  const f = ST.frame, L = ST.L;
+  const x0 = L.ox + f.x * L.k, y0 = L.oy + f.y * L.k, x1 = x0 + f.w * L.k, y1 = y0 + f.h * L.k, xm = (x0 + x1) / 2, ym = (y0 + y1) / 2;
+  const hs = [['nw', x0, y0, -1, -1], ['ne', x1, y0, 1, -1], ['se', x1, y1, 1, 1], ['sw', x0, y1, -1, 1]];
+  if (!stAspect()) hs.push(['n', xm, y0, 0, -1], ['e', x1, ym, 1, 0], ['s', xm, y1, 0, 1], ['w', x0, ym, -1, 0]);
+  return { hs, x0, y0, x1, y1 };
+}
+function stPaintCompose(ctx) {
+  if (ST.fixed && ST.crop) {
+    const c = ST.crop, L = stFit(c.width, c.height); ST.L = L;
+    ctx.drawImage(c, L.ox, L.oy, c.width * L.k, c.height * L.k);
+    stDrawGuides(ctx, L.ox, L.oy, c.width * L.k, c.height * L.k, 1);
+    return;
+  }
+  const R = ST.ref, L = stFit(R.w, R.h); ST.L = L;
+  const iw = R.w * L.k, ih = R.h * L.k;
+  ctx.drawImage(R.img, L.ox, L.oy, iw, ih);
+  const { hs, x0, y0, x1, y1 } = stFrameHandles();
+  // one shape with a hole, slightly larger than the image, so no seams show at the edges
+  ctx.fillStyle = ST.border === 'black' ? '#000000' : 'rgba(0,0,0,.62)';
+  ctx.beginPath(); ctx.rect(L.ox - 1, L.oy - 1, iw + 2, ih + 2); ctx.rect(x0, y0, x1 - x0, y1 - y0);
+  ctx.fill('evenodd');
+  stDrawGuides(ctx, x0, y0, x1 - x0, y1 - y0, 1);
+  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+  ctx.lineWidth = 1.5; ctx.strokeStyle = '#ffffff'; ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+  for (const [, hx, hy] of hs) stHandle(ctx, hx, hy, 6);
+}
+function stLayers() {
+  const sk = ST.sketch, key = [ST.sketchVer, ST.strength, ST.lineColor].join('|');
+  if (ST.layers && ST.layersKey === key) return ST.layers;
+  const w = sk.width, hh = sk.height, d = sk.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, hh).data;
+  const Lum = new Float32Array(w * hh);
+  for (let i = 0, j = 0; i < d.length; i += 4, j++) Lum[j] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+  // paper brightness: the brightest value in each 24 px block, spread a little, then interpolated
+  const B = 24, bw = Math.ceil(w / B), bh = Math.ceil(hh / B), bmax = new Float32Array(bw * bh);
+  for (let y = 0; y < hh; y++) { const r = (y / B | 0) * bw, row = y * w; for (let x = 0; x < w; x++) { const v = Lum[row + x], bi = r + (x / B | 0); if (v > bmax[bi]) bmax[bi] = v; } }
+  const bg = new Float32Array(bw * bh);
+  for (let by = 0; by < bh; by++) for (let bx = 0; bx < bw; bx++) {
+    let m = 0;
+    for (let yy = Math.max(0, by - 1); yy <= Math.min(bh - 1, by + 1); yy++) for (let xx = Math.max(0, bx - 1); xx <= Math.min(bw - 1, bx + 1); xx++) m = Math.max(m, bmax[yy * bw + xx]);
+    bg[by * bw + bx] = Math.max(m, 24);
+  }
+  // blocks much darker than the paper (a table, a shadow beyond the sheet) can't hold pencil lines
+  const sortedMax = Array.from(bmax).sort((x, y) => x - y), paperLevel = sortedMax[Math.floor(sortedMax.length * 0.9)] || 255;
+  const t = ST.strength / 100, hi = 0.62 + 0.3 * t, lo = hi - 0.35;
+  const hex = (ST_COLORS.find(c => c[0] === ST.lineColor) || ST_COLORS[0])[2];
+  const cr = parseInt(hex.slice(1, 3), 16), cg = parseInt(hex.slice(3, 5), 16), cb = parseInt(hex.slice(5, 7), 16);
+  const lines = stCanvas(w, hh), gray = stCanvas(w, hh);
+  const li = lines.getContext('2d').createImageData(w, hh), gi = gray.getContext('2d').createImageData(w, hh), lo8 = li.data, go8 = gi.data;
+  for (let y = 0; y < hh; y++) {
+    let fy = (y + 0.5) / B - 0.5; if (fy < 0) fy = 0; const y0 = Math.min(bh - 1, fy | 0), y1 = Math.min(bh - 1, y0 + 1), ty = fy - y0;
+    for (let x = 0; x < w; x++) {
+      let fx = (x + 0.5) / B - 0.5; if (fx < 0) fx = 0; const x0 = Math.min(bw - 1, fx | 0), x1 = Math.min(bw - 1, x0 + 1), tx = fx - x0;
+      const b = (bg[y0 * bw + x0] * (1 - tx) + bg[y0 * bw + x1] * tx) * (1 - ty) + (bg[y1 * bw + x0] * (1 - tx) + bg[y1 * bw + x1] * tx) * ty;
+      const j = y * w + x, n = Math.min(1, Lum[j] / b), p = j * 4;
+      let a = (hi - n) / (hi - lo); a = a < 0 ? 0 : a > 1 ? 1 : a;
+      if (bmax[(y / B | 0) * bw + (x / B | 0)] < 0.55 * paperLevel) a = 0;
+      lo8[p] = cr; lo8[p + 1] = cg; lo8[p + 2] = cb; lo8[p + 3] = a * 255;
+      const g = 255 * (1 - a * (1 - n));
+      go8[p] = go8[p + 1] = go8[p + 2] = g; go8[p + 3] = 255;
+    }
+  }
+  lines.getContext('2d').putImageData(li, 0, 0); gray.getContext('2d').putImageData(gi, 0, 0);
+  ST.layers = { lines, gray }; ST.layersKey = key;
+  return ST.layers;
+}
+function stPaintSketchLayer(ctx, ref, L, forExport) {
+  const { s, r, tx, ty } = ST.xf;
+  ctx.save();
+  // lines and pencil views stay inside the reference, where the comparison means something
+  if (ST.view !== 'photo') { ctx.beginPath(); ctx.rect(L.ox, L.oy, ref.w * L.k, ref.h * L.k); ctx.clip(); }
+  ctx.translate(L.ox, L.oy); ctx.scale(L.k, L.k); ctx.translate(tx, ty); ctx.rotate(r); ctx.scale(s, s);
+  ctx.globalAlpha = ST.opacity;
+  if (ST.view === 'lines') ctx.drawImage(stLayers().lines, 0, 0);
+  else if (ST.view === 'multiply') { ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(stLayers().gray, 0, 0); }
+  else ctx.drawImage(ST.sketch, 0, 0);
+  ctx.restore();
+}
+function stPaintRef(ctx, ref, L) {
+  const w = ref.w * L.k, hh = ref.h * L.k;
+  if (ST.refFade < 1) { ctx.fillStyle = '#ffffff'; ctx.fillRect(L.ox, L.oy, w, hh); ctx.globalAlpha = ST.refFade; }
+  ctx.drawImage(ref.img, L.ox, L.oy, w, hh);
+  ctx.globalAlpha = 1;
+}
+function stMarker(ctx, x, y, n) {
+  ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2); ctx.fillStyle = '#e5383b'; ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+  ctx.fillStyle = '#ffffff'; ctx.font = '600 12px ' + getComputedStyle(document.body).fontFamily;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(n), x, y + 0.5);
+}
+function stPaintCompare(ctx) {
+  const ref = stCmpRef();
+  if (ST.sketch && ST.cmpKey !== ref.w + 'x' + ref.h) stFitSketch();
+  if (ST.corners) {
+    const sk = ST.sketchOrig, L = stFit(sk.width, sk.height); ST.L = L;
+    ctx.drawImage(sk, L.ox, L.oy, sk.width * L.k, sk.height * L.k);
+    const P = ST.corners.map(([x, y]) => [L.ox + x * L.k, L.oy + y * L.k]);
+    ctx.fillStyle = 'rgba(0,0,0,.45)';
+    ctx.beginPath(); ctx.rect(L.ox, L.oy, sk.width * L.k, sk.height * L.k);
+    ctx.moveTo(P[0][0], P[0][1]); for (let i = 3; i >= 0; i--) ctx.lineTo(P[i][0], P[i][1]); ctx.closePath();
+    ctx.fill('evenodd');
+    ctx.beginPath(); P.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath();
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.stroke();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+    for (const [x, y] of P) stHandle(ctx, x, y, 9);
+    return;
+  }
+  if (ST.align && ST.align.step >= 2) {
+    const sk = ST.sketch, L = stFit(sk.width, sk.height); ST.L = L;
+    ctx.drawImage(sk, L.ox, L.oy, sk.width * L.k, sk.height * L.k);
+    ST.align.sk.forEach(([x, y], i) => stMarker(ctx, L.ox + x * L.k, L.oy + y * L.k, i + 1));
+    return;
+  }
+  const L = stFit(ref.w, ref.h); ST.L = L;
+  stPaintRef(ctx, ref, L);
+  if (ST.align) { ST.align.ref.forEach(([x, y], i) => stMarker(ctx, L.ox + x * L.k, L.oy + y * L.k, i + 1)); return; }
+  const hidden = ST.peek || (ST.flicker && !ST.flickOn);
+  if (ST.sketch && !hidden) stPaintSketchLayer(ctx, ref, L);
+}
+
+/* ---------- straighten: 4 corners → rectangle with the reference's proportions ---------- */
+function stSolve(A, b) {
+  const n = b.length;
+  for (let i = 0; i < n; i++) {
+    let p = i; for (let r = i + 1; r < n; r++) if (Math.abs(A[r][i]) > Math.abs(A[p][i])) p = r;
+    [A[i], A[p]] = [A[p], A[i]]; [b[i], b[p]] = [b[p], b[i]];
+    if (Math.abs(A[i][i]) < 1e-12) return null;
+    for (let r = i + 1; r < n; r++) { const f = A[r][i] / A[i][i]; for (let c = i; c < n; c++) A[r][c] -= f * A[i][c]; b[r] -= f * b[i]; }
+  }
+  const x = new Array(n).fill(0);
+  for (let i = n - 1; i >= 0; i--) { let s = b[i]; for (let c = i + 1; c < n; c++) s -= A[i][c] * x[c]; x[i] = s / A[i][i]; }
+  return x;
+}
+function stHomography(src, dst) { // maps src points to dst points
+  const A = [], b = [];
+  for (let i = 0; i < 4; i++) {
+    const [u, v] = src[i], [x, y] = dst[i];
+    A.push([u, v, 1, 0, 0, 0, -u * x, -v * x]); b.push(x);
+    A.push([0, 0, 0, u, v, 1, -u * y, -v * y]); b.push(y);
+  }
+  return stSolve(A, b);
+}
+function stOrderCorners(pts) {
+  const cx = pts.reduce((s, p) => s + p[0], 0) / 4, cy = pts.reduce((s, p) => s + p[1], 0) / 4;
+  const sorted = pts.slice().sort((a, b) => Math.atan2(a[1] - cy, a[0] - cx) - Math.atan2(b[1] - cy, b[0] - cx));
+  let tl = 0; sorted.forEach((p, i) => { if (p[0] + p[1] < sorted[tl][0] + sorted[tl][1]) tl = i; });
+  return sorted.slice(tl).concat(sorted.slice(0, tl));
+}
+async function stApplyCorners() {
+  const ref = stCmpRef(), sk = ST.sketchOrig, q = stOrderCorners(ST.corners);
+  const edge = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  const span = Math.max(edge(q[0], q[1]), edge(q[3], q[2]), edge(q[0], q[3]), edge(q[1], q[2]));
+  const aspect = ref.w / ref.h, long = Math.min(2000, Math.max(400, span));
+  const W = Math.round(aspect >= 1 ? long : long * aspect), H = Math.round(aspect >= 1 ? long / aspect : long);
+  const Hm = stHomography([[0, 0], [W, 0], [W, H], [0, H]], q);
+  if (!Hm) { toast('Those corners are too close together. Spread them out and try again.'); return; }
+  stHint('Straightening…');
+  await new Promise(r => setTimeout(r, 30));
+  const sw = sk.width, sh = sk.height, sd = sk.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, sw, sh).data;
+  const out = stCanvas(W, H), oc = out.getContext('2d'), od = oc.createImageData(W, H), o = od.data;
+  const [h0, h1, h2, h3, h4, h5, h6, h7] = Hm;
+  for (let v = 0; v < H; v++) {
+    const vv = v + 0.5;
+    for (let u = 0; u < W; u++) {
+      const uu = u + 0.5, den = h6 * uu + h7 * vv + 1;
+      let x = (h0 * uu + h1 * vv + h2) / den - 0.5, y = (h3 * uu + h4 * vv + h5) / den - 0.5;
+      if (x < 0) x = 0; else if (x > sw - 1) x = sw - 1;
+      if (y < 0) y = 0; else if (y > sh - 1) y = sh - 1;
+      const x0 = x | 0, y0 = y | 0, x1 = Math.min(sw - 1, x0 + 1), y1 = Math.min(sh - 1, y0 + 1), fx = x - x0, fy = y - y0;
+      const p00 = (y0 * sw + x0) * 4, p10 = (y0 * sw + x1) * 4, p01 = (y1 * sw + x0) * 4, p11 = (y1 * sw + x1) * 4, p = (v * W + u) * 4;
+      for (let c = 0; c < 3; c++) o[p + c] = (sd[p00 + c] * (1 - fx) + sd[p10 + c] * fx) * (1 - fy) + (sd[p01 + c] * (1 - fx) + sd[p11 + c] * fx) * fy;
+      o[p + 3] = 255;
+    }
+  }
+  oc.putImageData(od, 0, 0);
+  ST.sketch = out; ST.sketchVer++; ST.straightened = true; ST.corners = null;
+  stFitSketch();
+  stRender();
+  toast('Straightened to the reference’s proportions.');
+}
+
+/* ---------- two-point alignment ---------- */
+function stFinishAlign() {
+  const [r1, r2] = ST.align.ref, [s1, s2] = ST.align.sk;
+  const vr = [r2[0] - r1[0], r2[1] - r1[1]], vs = [s2[0] - s1[0], s2[1] - s1[1]];
+  const ls = Math.hypot(vs[0], vs[1]);
+  if (ls < 4) { toast('Pick two points further apart on your sketch.'); ST.align.sk = []; ST.align.step = 2; stRender(); return; }
+  const s = Math.hypot(vr[0], vr[1]) / ls, r = Math.atan2(vr[1], vr[0]) - Math.atan2(vs[1], vs[0]);
+  const c = Math.cos(r), si = Math.sin(r);
+  ST.xf = { s, r, tx: r1[0] - s * (c * s1[0] - si * s1[1]), ty: r1[1] - s * (si * s1[0] + c * s1[1]) };
+  ST.align = null;
+  stRender();
+  toast('Lined up on your two points.');
+}
+
+/* ---------- export ---------- */
+function stDownload(canvas, name) {
+  try {
+    canvas.toBlob(b => {
+      if (!b) { toast("Couldn't create the image."); return; }
+      const u = URL.createObjectURL(b), a = h('a', { href: u, download: name });
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(u), 4000);
+    }, 'image/jpeg', 0.92);
+  } catch {
+    toast("Pinterest doesn't allow saving this pin from another site. Copy it into one of your boards first.");
+  }
+}
+function stCompositionExport(withGuides) {
+  const c = ST.crop, out = stCanvas(c.width, c.height), x = out.getContext('2d');
+  x.drawImage(c, 0, 0);
+  if (withGuides) stDrawGuides(x, 0, 0, c.width, c.height, Math.max(1, c.width / 700));
+  return out;
+}
+function stCompareExport() {
+  const ref = stCmpRef(), k = Math.min(1, 2400 / Math.max(ref.w, ref.h));
+  const out = stCanvas(ref.w * k, ref.h * k), x = out.getContext('2d');
+  const L = { k, ox: 0, oy: 0 };
+  x.fillStyle = '#ffffff'; x.fillRect(0, 0, out.width, out.height);
+  stPaintRef(x, ref, L);
+  if (ST.sketch) stPaintSketchLayer(x, ref, L, true);
+  return out;
+}
+function stSaveToLibrary() {
+  if (!ST.crop) return;
+  const board = $('#stSaveBoard').value, label = stRatioLabel(ST_RATIOS.find(o => o.id === ST.ratio));
+  try {
+    ST.crop.toBlob(b => {
+      if (!b) { toast("Couldn't save the composition."); return; }
+      addFiles([new File([b], 'composition.jpg', { type: 'image/jpeg' })], { board, source: 'studio', note: `Composition ${label} · ${ST.refName}`.slice(0, 140) });
+    }, 'image/jpeg', 0.92);
+  } catch {
+    toast("Pinterest doesn't allow saving this pin from another site. Copy it into one of your boards first.");
+  }
+}
+
+/* ---------- panel ---------- */
+function stReadout() {
+  const f = ST.frame; if (!f || !ST.ref) return;
+  const lab = ST.ratio === 'free' ? `${(f.w / f.h).toFixed(2)}:1` : stRatioLabel(ST_RATIOS.find(o => o.id === ST.ratio));
+  $('#stReadout').textContent = `${lab} · ${Math.round(f.w)} × ${Math.round(f.h)} px · ${Math.round(100 * f.w * f.h / (ST.ref.w * ST.ref.h))}% of the image`;
+}
+function stHint(text) { const el = $('#stHint'); el.textContent = text || ''; el.hidden = !text; }
+function stPressed(sel, attr, val) { $$(sel).forEach(b => b.setAttribute('aria-pressed', String(b.dataset[attr] === val))); }
+function stRender() {
+  const has = !!ST.ref, compose = ST.mode === 'compose';
+  stPressed('#stModeSeg button', 'mode', ST.mode);
+  $('#stEmpty').hidden = has;
+  $('#stRefName').textContent = has ? ST.refName : '';
+  $('#stRefBtnLabel').textContent = has ? 'New reference' : 'Upload reference';
+  $('#stNoRef').hidden = has;
+  $('#stComposeBox').hidden = !has || !compose;
+  $('#stCompareBox').hidden = !has || compose;
+  if (has && compose) {
+    const fixed = ST.fixed && !!ST.crop;
+    for (const el of $$('.st-edit')) el.hidden = fixed;
+    for (const el of $$('.st-fixed')) el.hidden = !fixed;
+    $('#stComposeTitle').textContent = fixed ? 'Draw it' : 'Compose';
+    $('#stComposeLead').textContent = fixed
+      ? 'Your composition is fixed. Keep the guides you want while you draw, and start the timer.'
+      : 'Drag the frame and its corners to try different crops. Everything outside the frame turns black.';
+    $('#stRatios').replaceChildren(...ST_RATIOS.map(o => h('button', {
+      type: 'button', class: 'chip', 'aria-pressed': String(ST.ratio === o.id),
+      onclick: () => { ST.ratio = o.id; if (o.id === 'orig') ST.landscape = ST.ref.w > ST.ref.h; stReshape(); stRender(); }
+    }, stRatioLabel(o))));
+    $('#stOrient').textContent = ST.landscape ? 'Make it portrait' : 'Make it landscape';
+    $('#stOrient').disabled = ST.ratio === 'free' || ST.ratio === 'orig' || ST.ratio === '1:1';
+    $$('#stBorderSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.b === ST.border)));
+    stReadout();
+    $('#stDurs').replaceChildren(...ST_DURS.map(sec => h('button', {
+      type: 'button', class: 'chip', 'aria-pressed': String(ST.drawDur === sec),
+      onclick: () => { ST.drawDur = sec; stSave(); stRender(); renderTimer(); }
+    }, dlabel(sec))));
+    boardOptions($('#stSaveBoard'), $('#stSaveBoard').value || 'poses');
+  }
+  $('#stGuides').replaceChildren(...ST_GUIDES.map(([id, label]) => h('button', {
+    type: 'button', class: 'chip', 'aria-pressed': String(stGuides.has(id)),
+    onclick: () => { if (stGuides.has(id)) stGuides.delete(id); else stGuides.add(id); stSave(); stRender(); }
+  }, label)));
+  $('#stGridRow').hidden = !stGuides.has('grid');
+  $('#stGridN').textContent = `${ST.gridN} × ${ST.gridN}`;
+  $('#stFlipRow').hidden = !(stGuides.has('spiral') || stGuides.has('tri'));
+  $$('#stFlipRow button').forEach(b => b.setAttribute('aria-pressed', String(b.id === 'stFlipH' ? ST.flipH : ST.flipV)));
+  $('#stTones').replaceChildren(...ST_TONES.map(([id, label]) => h('button', {
+    type: 'button', class: 'chip', 'aria-pressed': String(ST.tone === id), onclick: () => { ST.tone = id; stSave(); stRender(); }
+  }, label)));
+  if (has && !compose) {
+    const sk = !!ST.sketch;
+    $('#stCmpAgainst').textContent = ST.fixed && ST.crop
+      ? 'Your sketch is laid over your fixed composition.'
+      : 'Your sketch is laid over the whole reference. Fix a composition first to compare against the crop.';
+    $('#stCmpTools').hidden = !sk;
+    $('#stSketchBtnLabel').textContent = sk ? 'New photo' : 'Upload a photo';
+    $('#stCornersBar').hidden = !ST.corners;
+    $('#stAlignBar').hidden = !ST.align;
+    $('#stLineupBtns').hidden = !!(ST.corners || ST.align);
+    $('#stUnstraighten').hidden = !ST.straightened;
+    stPressed('#stViewSeg button', 'v', ST.view);
+    $('#stStrengthRow').hidden = ST.view === 'photo';
+    $('#stColorRow').hidden = ST.view !== 'lines';
+    $('#stLineColors').replaceChildren(...ST_COLORS.map(([id, label, hex]) => h('button', {
+      type: 'button', class: 'chip', 'aria-pressed': String(ST.lineColor === id), onclick: () => { ST.lineColor = id; stSave(); stRender(); }
+    }, h('span', { class: 'st-dot', style: `background:${hex}` }), label)));
+    $('#stOpacity').value = String(Math.round(ST.opacity * 100)); $('#stOpacityV').textContent = Math.round(ST.opacity * 100) + '%';
+    $('#stStrength').value = String(ST.strength); $('#stStrengthV').textContent = String(ST.strength);
+    $('#stRefFade').value = String(Math.round(ST.refFade * 100)); $('#stRefFadeV').textContent = Math.round(ST.refFade * 100) + '%';
+    const deg = Math.round(ST.xf.r * 1800 / Math.PI) / 10;
+    $('#stRot').value = String(Math.max(-45, Math.min(45, deg))); $('#stRotV').textContent = deg + '°';
+    $('#stFlicker').checked = ST.flicker;
+  }
+  let hint = '';
+  if (has && !compose) {
+    if (ST.corners) hint = 'Drag the four dots onto the corners of your drawing area, then press Apply.';
+    else if (ST.align) hint = ['1 of 4 · Click a clear point on the reference, like the top of the head.',
+      '2 of 4 · Click a second point far from the first, like a heel.',
+      '3 of 4 · Click the same first point on your sketch.',
+      '4 of 4 · Click the same second point on your sketch.'][ST.align.step];
+    else if (!ST.sketch) hint = 'Upload or paste a photo of your sketch to lay it over the reference.';
+  }
+  stHint(hint);
+  stCursor('');
+  stDraw();
+  renderTimer();
+}
+function stCursor(c) { const s = $('#stStage'); if (s) s.style.cursor = c || (ST.mode === 'compare' && ST.align ? 'crosshair' : ''); }
+
+/* ---------- pointer + keyboard ---------- */
+function stLocal(e) { const r = $('#stStage').getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+function stToImg(p) { const L = ST.L; return [(p.x - L.ox) / L.k, (p.y - L.oy) / L.k]; }
+function stHitFrame(p, touch) {
+  const { hs, x0, y0, x1, y1 } = stFrameHandles(), rad = touch ? 22 : 12;
+  for (const [id, hx, hy, sx, sy] of hs) if (Math.hypot(p.x - hx, p.y - hy) <= rad) return { kind: 'resize', id, sx, sy };
+  if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1) return { kind: 'move' };
+  return null;
+}
+const ST_CURSORS = { nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize', n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize' };
+function stResize(d, p) {
+  const f0 = d.f0, a = stAspect(), W = ST.ref.w, H = ST.ref.h, min = 0.04 * Math.min(W, H);
+  const [px, py] = stToImg(p);
+  let x = f0.x, y = f0.y, w = f0.w, hh = f0.h;
+  const ax = d.sx < 0 ? f0.x + f0.w : f0.x, ay = d.sy < 0 ? f0.y + f0.h : f0.y;
+  if (d.sx) w = Math.max(min, Math.min(d.sx < 0 ? ax : W - ax, d.sx * (px - ax)));
+  if (d.sy) hh = Math.max(min, Math.min(d.sy < 0 ? ay : H - ay, d.sy * (py - ay)));
+  if (a && d.sx && d.sy) {
+    if (w / hh > a) w = hh * a; else hh = w / a;
+    const maxW = d.sx < 0 ? ax : W - ax, maxH = d.sy < 0 ? ay : H - ay;
+    if (w > maxW) { w = maxW; hh = w / a; }
+    if (hh > maxH) { hh = maxH; w = hh * a; }
+  }
+  if (d.sx) x = d.sx < 0 ? ax - w : ax;
+  if (d.sy) y = d.sy < 0 ? ay - hh : ay;
+  ST.frame = stClampFrame({ x, y, w, h: hh });
+}
+function stRotateAbout(px, py, dr) {
+  const c = Math.cos(dr), s = Math.sin(dr), { tx, ty } = ST.xf;
+  ST.xf.tx = px + c * (tx - px) - s * (ty - py);
+  ST.xf.ty = py + s * (tx - px) + c * (ty - py);
+  ST.xf.r += dr;
+}
+function stScaleAbout(px, py, f) {
+  ST.xf.tx = px + f * (ST.xf.tx - px); ST.xf.ty = py + f * (ST.xf.ty - py); ST.xf.s *= f;
+}
+function stBindStudio() {
+  const stage = $('#stStage'), ptrs = new Map();
+  let pinch = null;
+  if ('ResizeObserver' in window) new ResizeObserver(() => stDraw()).observe(stage);
+  stage.addEventListener('pointerdown', e => {
+    if (!ST.ref || !ST.L || e.target.closest('button, label, a')) return;
+    stage.setPointerCapture(e.pointerId);
+    const p = stLocal(e);
+    ptrs.set(e.pointerId, p);
+    const touch = e.pointerType !== 'mouse';
+    if (ST.mode === 'compose' && !ST.fixed) {
+      const hit = stHitFrame(p, touch);
+      ST.drag = hit ? Object.assign(hit, { p0: p, f0: Object.assign({}, ST.frame) }) : null;
+      if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) }; ST.drag = null; }
+      return;
+    }
+    if (ST.mode !== 'compare') return;
+    if (ST.corners) {
+      const L = ST.L; let best = -1, bd = touch ? 30 : 18;
+      ST.corners.forEach(([x, y], i) => { const dd = Math.hypot(p.x - (L.ox + x * L.k), p.y - (L.oy + y * L.k)); if (dd < bd) { bd = dd; best = i; } });
+      ST.drag = best >= 0 ? { kind: 'corner', i: best } : null;
+      return;
+    }
+    if (ST.align) {
+      const [ix, iy] = stToImg(p), step = ST.align.step;
+      const lim = step < 2 ? stCmpRef() : { w: ST.sketch.width, h: ST.sketch.height };
+      if (ix < 0 || iy < 0 || ix > lim.w || iy > lim.h) return;
+      if (step < 2) ST.align.ref.push([ix, iy]); else ST.align.sk.push([ix, iy]);
+      ST.align.step++;
+      if (ST.align.step >= 4) stFinishAlign(); else stRender();
+      return;
+    }
+    if (!ST.sketch) return;
+    if (ptrs.size === 2) {
+      const [a, b] = [...ptrs.values()];
+      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), ang: Math.atan2(b.y - a.y, b.x - a.x), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+      ST.drag = null;
+    } else ST.drag = { kind: 'sketch', last: p };
+    stage.style.cursor = 'grabbing';
+  });
+  stage.addEventListener('pointermove', e => {
+    if (!ST.ref) return;
+    const p = stLocal(e);
+    if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, p);
+    if (pinch && ptrs.size === 2) {
+      const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (ST.mode === 'compose' && !ST.fixed) { stScaleFrame(d / pinch.d); pinch.d = d; stReadout(); stDraw(); return; }
+      if (ST.mode === 'compare' && ST.sketch && !ST.align && !ST.corners) {
+        const L = ST.L, ang = Math.atan2(b.y - a.y, b.x - a.x), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+        const cx = (mx - L.ox) / L.k, cy = (my - L.oy) / L.k;
+        ST.xf.tx += (mx - pinch.mx) / L.k; ST.xf.ty += (my - pinch.my) / L.k;
+        stScaleAbout(cx, cy, d / pinch.d); stRotateAbout(cx, cy, ang - pinch.ang);
+        Object.assign(pinch, { d, ang, mx, my });
+        stDraw(); return;
+      }
+    }
+    const d = ST.drag;
+    if (!d) {
+      if (e.pointerType === 'mouse' && ST.mode === 'compose' && !ST.fixed && ST.L) {
+        const hit = stHitFrame(p, false);
+        stage.style.cursor = hit ? (hit.kind === 'move' ? 'move' : ST_CURSORS[hit.id]) : '';
+      } else if (e.pointerType === 'mouse' && ST.mode === 'compare' && ST.sketch && !ST.align && !ST.corners) stage.style.cursor = 'grab';
+      return;
+    }
+    if (d.kind === 'move') {
+      const L = ST.L;
+      ST.frame = stClampFrame(Object.assign({}, d.f0, { x: d.f0.x + (p.x - d.p0.x) / L.k, y: d.f0.y + (p.y - d.p0.y) / L.k }));
+      stReadout(); stDraw();
+    } else if (d.kind === 'resize') { stResize(d, p); stReadout(); stDraw(); }
+    else if (d.kind === 'corner') {
+      const [ix, iy] = stToImg(p), sk = ST.sketchOrig;
+      ST.corners[d.i] = [Math.max(0, Math.min(sk.width, ix)), Math.max(0, Math.min(sk.height, iy))];
+      stDraw();
+    } else if (d.kind === 'sketch') {
+      const L = ST.L;
+      ST.xf.tx += (p.x - d.last.x) / L.k; ST.xf.ty += (p.y - d.last.y) / L.k; d.last = p;
+      stDraw();
+    }
+  });
+  const up = e => {
+    ptrs.delete(e.pointerId);
+    if (ptrs.size < 2) pinch = null;
+    if (ST.drag && ST.drag.kind === 'sketch') stRender();
+    ST.drag = null;
+  };
+  stage.addEventListener('pointerup', up);
+  stage.addEventListener('pointercancel', up);
+  stage.addEventListener('wheel', e => {
+    if (!ST.ref) return;
+    const p = stLocal(e), f = Math.exp(-e.deltaY * 0.0015);
+    if (ST.mode === 'compose' && !ST.fixed) { e.preventDefault(); stScaleFrame(f); stReadout(); stDraw(); }
+    else if (ST.mode === 'compare' && ST.sketch && !ST.align && !ST.corners) {
+      e.preventDefault();
+      const [cx, cy] = stToImg(p);
+      if (e.shiftKey) stRotateAbout(cx, cy, -e.deltaY * 0.002); else stScaleAbout(cx, cy, f);
+      stDraw(); clearTimeout(stWheelT); stWheelT = setTimeout(stRender, 200);
+    }
+  }, { passive: false });
+  stage.addEventListener('dragover', e => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { e.preventDefault(); stage.classList.add('over'); } });
+  stage.addEventListener('dragleave', () => stage.classList.remove('over'));
+  stage.addEventListener('drop', e => {
+    stage.classList.remove('over');
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!f) return;
+    e.preventDefault(); e.stopPropagation();
+    stHandleFile(f);
+  });
+
+  // panel controls
+  $$('#stModeSeg button').forEach(b => b.addEventListener('click', () => { ST.mode = b.dataset.mode; ST.align = null; ST.corners = null; stRender(); }));
+  $('#stRefFile').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) stLoadRef(f, f.name.replace(/\.[^.]+$/, '')); });
+  $('#stSample').addEventListener('click', stSample);
+  $('#stOrient').addEventListener('click', () => { ST.landscape = !ST.landscape; stReshape(); stRender(); });
+  $('#stFill').addEventListener('click', () => { stLargest(); stRender(); });
+  $$('#stBorderSeg button').forEach(b => b.addEventListener('click', () => { ST.border = b.dataset.b; stSave(); stRender(); }));
+  $('#stGridMinus').addEventListener('click', () => { ST.gridN = Math.max(2, ST.gridN - 1); stSave(); stRender(); });
+  $('#stGridPlus').addEventListener('click', () => { ST.gridN = Math.min(12, ST.gridN + 1); stSave(); stRender(); });
+  $('#stFlipH').addEventListener('click', () => { ST.flipH = !ST.flipH; stRender(); });
+  $('#stFlipV').addEventListener('click', () => { ST.flipV = !ST.flipV; stRender(); });
+  $('#stFix').addEventListener('click', () => {
+    const R = ST.ref, f = ST.frame, k = Math.min(1, 2400 / Math.max(f.w, f.h));
+    const c = stCanvas(f.w * k, f.h * k);
+    c.getContext('2d').drawImage(R.img, f.x, f.y, f.w, f.h, 0, 0, c.width, c.height);
+    ST.crop = c; ST.fixed = true; ST.cmpKey = '';
+    stRender();
+  });
+  $('#stUnfix').addEventListener('click', () => { ST.fixed = false; ST.crop = null; ST.cmpKey = ''; stRender(); });
+  $('#stDrawStart').addEventListener('click', () => {
+    const ours = T.label === 'Composition study';
+    if (ours && (T.running || (T.left > 0 && T.left < T.total))) { tToggle(); return; }
+    tSet(ST.drawDur, 'Composition study'); tToggle();
+  });
+  $('#stSaveBtn').addEventListener('click', stSaveToLibrary);
+  $('#stDownload').addEventListener('click', () => stDownload(stCompositionExport(true), 'composition-with-guides.jpg'));
+  $('#stDownloadPlain').addEventListener('click', () => stDownload(stCompositionExport(false), 'composition.jpg'));
+  $('#stToCompare').addEventListener('click', () => { ST.mode = 'compare'; stRender(); });
+  $('#stSketchFile').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) stLoadSketch(f); });
+  $('#stCorners').addEventListener('click', () => {
+    const sk = ST.sketchOrig, mx = sk.width * 0.1, my = sk.height * 0.1;
+    ST.corners = [[mx, my], [sk.width - mx, my], [sk.width - mx, sk.height - my], [mx, sk.height - my]];
+    ST.align = null; stRender();
+  });
+  $('#stCornersApply').addEventListener('click', stApplyCorners);
+  $('#stCornersCancel').addEventListener('click', () => { ST.corners = null; stRender(); });
+  $('#stUnstraighten').addEventListener('click', () => { ST.sketch = ST.sketchOrig; ST.sketchVer++; ST.straightened = false; stFitSketch(); stRender(); });
+  $('#stTwoPts').addEventListener('click', () => { ST.align = { step: 0, ref: [], sk: [] }; ST.corners = null; stRender(); });
+  $('#stAlignCancel').addEventListener('click', () => { ST.align = null; stRender(); });
+  $('#stFitSk').addEventListener('click', () => { stFitSketch(); stRender(); });
+  $$('#stViewSeg button').forEach(b => b.addEventListener('click', () => { ST.view = b.dataset.v; stSave(); stRender(); }));
+  $('#stOpacity').addEventListener('input', e => { ST.opacity = Number(e.target.value) / 100; $('#stOpacityV').textContent = e.target.value + '%'; stDraw(); });
+  $('#stOpacity').addEventListener('change', stSave);
+  let strengthT = 0;
+  $('#stStrength').addEventListener('input', e => { ST.strength = Number(e.target.value); $('#stStrengthV').textContent = e.target.value; clearTimeout(strengthT); strengthT = setTimeout(() => { stSave(); stDraw(); }, 120); });
+  $('#stRefFade').addEventListener('input', e => { ST.refFade = Number(e.target.value) / 100; $('#stRefFadeV').textContent = e.target.value + '%'; stDraw(); });
+  $('#stRot').addEventListener('input', e => {
+    const ref = stCmpRef(); if (!ref) return;
+    stRotateAbout(ref.w / 2, ref.h / 2, Number(e.target.value) * Math.PI / 180 - ST.xf.r);
+    $('#stRotV').textContent = e.target.value + '°'; stDraw();
+  });
+  const peek = on => { ST.peek = on; stDraw(); };
+  const pk = $('#stPeek');
+  pk.addEventListener('pointerdown', e => { e.preventDefault(); peek(true); });
+  for (const t of ['pointerup', 'pointerleave', 'pointercancel']) pk.addEventListener(t, () => peek(false));
+  let flickT = 0;
+  $('#stFlicker').addEventListener('change', e => {
+    ST.flicker = e.target.checked; clearInterval(flickT); ST.flickOn = true;
+    if (ST.flicker) flickT = setInterval(() => { if (S.view !== 'studio' || !ST.flicker) return; ST.flickOn = !ST.flickOn; stDraw(); }, 550);
+    stDraw();
+  });
+  $('#stCmpDownload').addEventListener('click', () => stDownload(stCompareExport(), 'sketch-check.jpg'));
+  $('#stSketchClear').addEventListener('click', () => { ST.sketch = ST.sketchOrig = null; ST.layers = null; ST.corners = ST.align = null; stRender(); });
+  document.addEventListener('keyup', e => { if (e.code === 'Space' && ST.peek && S.view === 'studio') peek(false); });
+}
+let stWheelT = 0;
+/* Studio keys; returns true when the key was used. */
+function stKey(e) {
+  if (!ST.ref) return false;
+  const k = e.key;
+  if (k === 'Escape' && (ST.align || ST.corners)) { ST.align = null; ST.corners = null; stRender(); return true; }
+  if (ST.mode === 'compose' && !ST.fixed) {
+    const step = (e.shiftKey ? 0.05 : 0.01), f = ST.frame;
+    const mv = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
+    if (mv) { ST.frame = stClampFrame(Object.assign({}, f, { x: f.x + mv[0] * step * ST.ref.w, y: f.y + mv[1] * step * ST.ref.h })); stRender(); return true; }
+    if (k === '+' || k === '=') { stScaleFrame(1.05); stRender(); return true; }
+    if (k === '-') { stScaleFrame(1 / 1.05); stRender(); return true; }
+    if (k === 'Enter') { $('#stFix').click(); return true; }
+    return false;
+  }
+  if (ST.mode === 'compare' && ST.sketch && !ST.align && !ST.corners) {
+    const ref = stCmpRef(), L = ST.L || { k: 1 }, px = (e.shiftKey ? 10 : 1) / L.k;
+    const mv = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
+    if (mv) { ST.xf.tx += mv[0] * px; ST.xf.ty += mv[1] * px; stDraw(); return true; }
+    if (k === '+' || k === '=') { stScaleAbout(ref.w / 2, ref.h / 2, e.shiftKey ? 1.05 : 1.01); stRender(); return true; }
+    if (k === '-') { stScaleAbout(ref.w / 2, ref.h / 2, 1 / (e.shiftKey ? 1.05 : 1.01)); stRender(); return true; }
+    if (k === '[' || k === ']') { stRotateAbout(ref.w / 2, ref.h / 2, (k === '[' ? -1 : 1) * (e.shiftKey ? 2 : 0.5) * Math.PI / 180); stRender(); return true; }
+    if (e.code === 'Space') { if (!e.repeat) { ST.peek = true; stDraw(); } return true; }
+  }
+  return false;
+}
+
+
 /* ============ routing + render ============ */
-const VIEWS = ['practice', 'library', 'timer', 'sources'];
+const VIEWS = ['practice', 'library', 'timer', 'sources', 'studio'];
 function route() {
   const v = (location.hash || '').slice(1);
   const next = VIEWS.includes(v) ? v : 'practice';
@@ -1487,6 +2312,7 @@ function route() {
   for (const n of VIEWS) $('#v-' + n).hidden = n !== S.view;
   $$('.tab').forEach(t => t.setAttribute('aria-current', t.dataset.view === S.view ? 'page' : 'false'));
   if (changed) window.scrollTo(0, 0);
+  if (S.view === 'studio') stRender();
 }
 let rq = 0;
 function renderAll() {
@@ -1526,6 +2352,13 @@ function bind() {
   // global paste: adds to the current library board
   document.addEventListener('paste', e => {
     if (isTyping(e.target) || P.active || !$('#viewer').hidden) return;
+    if (S.view === 'studio') {
+      const items = Array.from((e.clipboardData && e.clipboardData.items) || []);
+      const it = items.find(i => i.kind === 'file' && /^image\//.test(i.type));
+      if (it) { e.preventDefault(); stHandleFile(it.getAsFile()); }
+      else toast('Nothing to paste. Copy an image or take a screenshot first.');
+      return;
+    }
     const board = S.view === 'library' ? S.libBoard : S.libBoard;
     handlePaste(e.clipboardData, { board });
   });
@@ -1650,6 +2483,9 @@ function bind() {
   $('#vwEditCancel').addEventListener('click', () => { $('#vwEdit').hidden = true; });
   $('#vwEdit').addEventListener('submit', saveEdit);
   $('#vwDel').addEventListener('click', deleteViewed);
+  $('#vwCompose').addEventListener('click', () => stFromViewer('compose'));
+  $('#vwCompare').addEventListener('click', () => stFromViewer('compare'));
+  stBindStudio();
   $('#vwStudyBtn').addEventListener('click', () => {
     if (T.running) { tToggle(); return; }
     const r = V.list[V.i];
@@ -1695,6 +2531,10 @@ function bind() {
       else if (e.key === ',') frameStep(-1);
       else if (e.key === '.') frameStep(1);
       else if (e.code === 'Space') { e.preventDefault(); framePlay(); }
+      return;
+    }
+    if (S.view === 'studio' && !isTyping(e.target)) {
+      if (stKey(e)) e.preventDefault();
       return;
     }
     if (S.view === 'timer' && !isTyping(e.target)) {

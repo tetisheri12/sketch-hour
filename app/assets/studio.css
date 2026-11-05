@@ -1,0 +1,32 @@
+/* Studio tab: composition checker and sketch comparison. Colors and controls come from styles.css. */
+
+.st-head{display:flex;justify-content:space-between;align-items:center;gap:var(--s3);flex-wrap:wrap;margin-bottom:var(--s4)}
+.st-name{font-size:var(--size-small);color:var(--text-weak);max-width:28ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.st-body{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:var(--s5);align-items:start}
+@media (max-width:900px){.st-body{grid-template-columns:minmax(0,1fr)}}
+
+.st-stage{position:relative;height:min(74vh,780px);min-height:360px;background:var(--stage);border-radius:var(--r-lg);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;box-shadow:var(--shadow-card)}
+@media (max-width:900px){.st-stage{height:62vh;min-height:300px}}
+.st-stage.over{outline:2px dashed var(--stage-accent);outline-offset:-8px}
+.st-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.st-empty{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:var(--s3);padding:var(--s5);text-align:center;color:var(--stage-ink)}
+.st-empty h2{color:var(--stage-ink)}
+.st-empty p{color:var(--stage-2);max-width:34em}
+.st-hint{position:absolute;left:50%;top:var(--s3);transform:translateX(-50%);width:max-content;max-width:calc(100% - 24px);background:var(--stage-fade);color:var(--stage-ink);padding:var(--s2) var(--s4);border-radius:var(--r-pill);font-size:var(--size-small);text-align:center;pointer-events:none}
+
+.st-panel{display:grid;gap:var(--s5)}
+.st-box{display:grid;gap:var(--s5)}
+.st-sec{display:grid;gap:var(--s3)}
+.st-sec + .st-sec{border-top:1px solid var(--border);padding-top:var(--s4)}
+.st-row{display:flex;gap:var(--s2);flex-wrap:wrap;align-items:center}
+.st-small{font-size:var(--size-small);color:var(--text-weak)}
+.st-readout{font-size:var(--size-small);color:var(--text-weak);font-variant-numeric:tabular-nums}
+.st-clock{font-size:var(--size-3);font-weight:600;line-height:1;color:var(--text-strong);font-variant-numeric:tabular-nums;min-width:4.2ch}
+.st-step{display:inline-flex;align-items:center;gap:var(--s2);font-size:var(--size-small);color:var(--text-strong)}
+.st-step span{min-width:5ch;text-align:center;font-variant-numeric:tabular-nums}
+.st-range{display:grid;grid-template-columns:5.5em minmax(0,1fr) 3.5em;gap:var(--s3);align-items:center;font-size:var(--size-small);color:var(--text-strong)}
+.st-range span:last-child{text-align:right;color:var(--text-weak);font-variant-numeric:tabular-nums}
+.st-dot{width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 1px rgba(255,255,255,.6);flex:none}
+.btn[aria-pressed="true"]{border-color:var(--primary);box-shadow:inset 0 0 0 1px var(--primary)}
+.st-panel .seg{width:max-content;max-width:100%}
+.st-panel .seg button{padding:0 .8em}

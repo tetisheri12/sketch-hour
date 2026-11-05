@@ -13,6 +13,7 @@ app/                          the website and the app; this folder is what gets 
   assets/
     styles.css                colors, type and every app component (palette at the top)
     site.css                  layout for the website pages
+    studio.css                the Studio tab (composition checker and sketch comparison)
     app.js                    the app's script
     img/                      screenshots used on the home page
 boards.json                   the Pinterest boards the site shows (edit this)
