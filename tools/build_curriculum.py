@@ -242,17 +242,17 @@ def page_body(cur):
   <p>{len(cur['tracks'])} skill tracks and {n_units} units, each practiced with timed references. Follow the suggested order in {len(cur['path'])} terms, or pick any track.</p>
   <div class="cta-row"><a class="btn primary big" href="/practice/#learn">Start the curriculum</a></div>
 </header>
-<section class="cur-how">
-  <div class="device"><h3>{n_units} units, {len(cur['path'])} terms</h3><p>Three units a term, mixing subjects so you don’t spend months on one. {esc(cur['pace'])}</p></div>
-  <div class="device"><h3>{n_ex} exercises</h3><p>Timed poses, longer studies, Studio exercises you check against the reference, and drawing from memory.</p></div>
-  <div class="device"><h3>{n_img} references</h3><p>{n_rendered} rendered for practice, and {n_img - n_rendered} public-domain master works from the Art Institute of Chicago.</p></div>
+<section class="stats">
+  <div class="stat"><b>{n_units}</b><span class="stat-label">units in {len(cur['path'])} terms</span><p>Three units a term, mixing subjects so you don’t spend months on one. {esc(cur['pace'])}</p></div>
+  <div class="stat"><b>{n_ex}</b><span class="stat-label">exercises</span><p>Timed poses, longer studies, Studio exercises you check against the reference, and drawing from memory.</p></div>
+  <div class="stat"><b>{n_img}</b><span class="stat-label">references</span><p>{n_rendered} rendered for practice, and {n_img - n_rendered} public-domain master works from the Art Institute of Chicago.</p></div>
 </section>
-<section class="band">
-  <div class="band-head"><h2>The suggested path</h2><p>Each term takes three units from different tracks. Click a unit to open it in the app.</p></div>
+<section class="band-in">
+  <div class="sec-head"><h2>The suggested path</h2><p>Each term takes three units from different tracks. Click a unit to open it in the app.</p></div>
   <ol class="cur-terms">{terms}</ol>
 </section>
-<section class="band">
-  <div class="band-head"><h2>The tracks</h2><p>Every track starts simple and ends with studies from the masters.</p></div>
+<section class="band-in">
+  <div class="sec-head"><h2>The tracks</h2><p>Every track starts simple and ends with studies from the masters.</p></div>
   <div class="cur-tracks">{tracks}</div>
 </section>
 <!-- /generated:curriculum -->"""

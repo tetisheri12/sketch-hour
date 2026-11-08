@@ -18,7 +18,8 @@ app/                          the website and the app; this folder is what gets 
     learn.css                 the Learn tab (curriculum and progress)
     curriculum.json           the curriculum: tracks, units, exercises, reference sets (generated, see section 6)
     app.js                    the app's script
-    img/                      screenshots used on the home page
+    img/                      home page images: session.webp (hero), home-*.webp (cropped app panels), strip/ (reference thumbnails)
+    og.png                    the 1200 x 630 picture shown when someone shares a link to the site
   refs/                       the curriculum's rendered reference images (WebP)
 boards.json                   the Pinterest boards the site shows (edit this)
 scripts/
@@ -97,7 +98,9 @@ The boards the site shows are listed in `boards.json`:
 - **Colors:** the PALETTE block at the top of `app/assets/styles.css` names the five colors plus the near-black `--ink`, and the ROLES block below it says which color does what, including the highlight gradient `--grad`. Dark mode has its own block under that.
 - **Fonts:** Nunito 700/800 (headings, navigation, buttons) and Open Sans 400/600 (text) are in `app/assets/fonts/`; each file is a variable font covering both weights. The website's type scale is at the top of `app/assets/site.css`. The files are Latin and Latin Extended only, with their licences. They're served from the site, so visitors' browsers don't contact Google.
 - **Website pages** are plain HTML. Keep links starting with `/` (for example `/handbook/`); the deploy workflow adds the `/sketch-hour` part. The header and footer are repeated in each page, so change them everywhere with search and replace across `app/**/*.html`.
-- **Screenshots** in `app/assets/img/` are 1600 × 1000 WebP. Replace them with your own captures at the same size.
+- **Home page images** in `app/assets/img/`: `session.webp` is a full 1600 × 1000 capture; the `home-*.webp` files are crops of single panels taken at 2× so their text stays readable; `strip/` holds 360px-tall thumbnails of the photo references. The people in those photos need to sign releases before the images are used in paid marketing.
+- **Link preview:** every page points `og:image` at `https://tetisheri12.github.io/sketch-hour/assets/og.png`. If the site moves to its own domain, change that address in each page's head.
+- **Colours on the website** follow 60-30-10: off-white page, linen bands and cards, dusk blue for buttons, links and the shortcuts band. The rules are at the top of `app/assets/site.css`.
 - **Changelog:** add a new section at the top of `app/changelog/index.html` for each release.
 - **Curriculum:** see section 6.
 

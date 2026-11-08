@@ -49,7 +49,7 @@ img{max-width:100%}
   --toggle-off:#d6d3cc;
   --text:#3b3e47;
   --text-strong:var(--ink);
-  --text-weak:#6f727b;
+  --text-weak:#5f6270;              /* 5.6:1 on the page */
 
   /* Derived */
   --primary-soft:color-mix(in srgb,var(--lavender-grey) 16%,#ffffff);
