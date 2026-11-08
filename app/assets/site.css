@@ -72,7 +72,9 @@
 .hero h1{max-width:13em}
 .scribble{position:relative;white-space:nowrap}
 .scribble svg{position:absolute;left:-2%;bottom:-.16em;width:104%;height:.32em;overflow:visible;pointer-events:none}
-.scribble path{fill:none;stroke:var(--lavender-grey);stroke-width:7;stroke-linecap:round}
+.scribble path{fill:none;stroke:var(--lavender-grey);stroke-width:7;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:0;animation:pen-stroke .9s cubic-bezier(.6,.05,.3,1) .35s both}
+@keyframes pen-stroke{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){.scribble path{animation:none}}
 .hero .lead{max-width:34em;margin-top:20px}
 .hero .cta-row{justify-content:center;margin-top:28px}
 .hero .fine{margin-top:12px}
