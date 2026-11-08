@@ -21,7 +21,7 @@
 .st-row{display:flex;gap:var(--s2);flex-wrap:wrap;align-items:center}
 .st-small{font-size:var(--size-small);color:var(--text-weak)}
 .st-readout{font-size:var(--size-small);color:var(--text-weak);font-variant-numeric:tabular-nums}
-.st-clock{font-size:var(--size-3);font-weight:600;line-height:1;color:var(--text-strong);font-variant-numeric:tabular-nums;min-width:4.2ch}
+.st-clock{font-family:var(--font-head);font-size:var(--size-3);font-weight:800;line-height:1;color:var(--text-strong);font-variant-numeric:tabular-nums;min-width:4.2ch}
 .st-step{display:inline-flex;align-items:center;gap:var(--s2);font-size:var(--size-small);color:var(--text-strong)}
 .st-step span{min-width:5ch;text-align:center;font-variant-numeric:tabular-nums}
 .st-range{display:grid;grid-template-columns:5.5em minmax(0,1fr) 3.5em;gap:var(--s3);align-items:center;font-size:var(--size-small);color:var(--text-strong)}
@@ -41,9 +41,9 @@
 .st-values .st-range{color:var(--stage-ink);grid-template-columns:6em minmax(0,1fr) 2.5em}
 .st-values .st-range span:last-child{color:var(--stage-2)}
 .st-values input[type="range"]{accent-color:var(--stage-accent)}
-.st-values .seg{width:100%}
-.st-values .seg button{flex:1;background:var(--stage-btn);color:var(--stage-ink);border-color:var(--stage-line)}
-.st-values .seg button[aria-pressed="true"]{background:var(--stage-accent);color:var(--stage-on-accent);border-color:var(--stage-accent)}
+.st-values .seg{width:100%;background:var(--stage-btn);box-shadow:none}
+.st-values .seg button{flex:1;background:transparent;color:var(--stage-ink)}
+.st-values .seg button[aria-pressed="true"]{background:var(--stage-accent);color:var(--stage-on-accent);box-shadow:none}
 .st-vnote{font-size:var(--size-tiny);color:var(--stage-2)}
 @media (max-width:640px){
   .st-values{left:var(--s3);right:var(--s3);width:auto}
