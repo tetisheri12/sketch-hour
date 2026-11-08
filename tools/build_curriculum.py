@@ -229,7 +229,7 @@ def page_body(cur):
     n_rendered = sum(len(s['items']) for s in cur['sets'].values() if s['items'] and 'src' in s['items'][0])
     terms = ''.join(
         f'<li class="cur-term"><span class="cur-n">{i + 1}</span><ul>' + ''.join(
-            f'<li><a href="/practice/#learn/{uid}"><small>{esc(units[uid][0]["name"])} {units[uid][1]["level"]}</small>{esc(units[uid][1]["title"])}</a></li>' for uid in ids) + '</ul></li>'
+            f'<li><a href="/practice/#learn/{uid}"><small>{esc(units[uid][0]["name"])} {units[uid][1]["level"]}</small><span>{esc(units[uid][1]["title"])}</span></a></li>' for uid in ids) + '</ul></li>'
         for i, ids in enumerate(cur['path']))
     tracks = ''.join(
         f'<section class="cur-track" id="{t["id"]}"><h3>{esc(t["name"])}</h3><p class="muted">{esc(t["blurb"])}</p><ol>' + ''.join(
@@ -239,7 +239,7 @@ def page_body(cur):
 <header class="page-head">
   <span class="lbl">Curriculum</span>
   <h1>A path through the skills of drawing</h1>
-  <p>{len(cur['tracks'])} skill tracks and {n_units} units, each practiced with timed references. Follow the suggested order in {len(cur['path'])} terms, or pick any track.</p>
+  <p class="lead">{len(cur['tracks'])} skill tracks and {n_units} units, each practiced with timed references. Follow the suggested order in {len(cur['path'])} terms, or pick any track.</p>
   <div class="cta-row"><a class="btn primary big" href="/practice/#learn">Start the curriculum</a></div>
 </header>
 <section class="cur-how">
