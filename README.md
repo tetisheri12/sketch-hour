@@ -13,8 +13,7 @@ app/                          the website and the app; this folder is what gets 
   assets/
     styles.css                fonts, colors, type and every app component (palette at the top)
     fonts/                    Nunito and Open Sans (SIL Open Font License), served from the site
-    site.css                  layout, type scale and spacing for the website pages (breakpoints at 768 and 1024 px)
-    site.js                   the website's compact menu on narrow screens
+    site.css                  layout for the website pages
     studio.css                the Studio tab (composition checker and sketch comparison)
     learn.css                 the Learn tab (curriculum and progress)
     curriculum.json           the curriculum: tracks, units, exercises, reference sets (generated, see section 6)
@@ -96,8 +95,7 @@ The boards the site shows are listed in `boards.json`:
 ## 5. Editing
 
 - **Colors:** the PALETTE block at the top of `app/assets/styles.css` names the five colors plus the near-black `--ink`, and the ROLES block below it says which color does what, including the highlight gradient `--grad`. Dark mode has its own block under that.
-- **Fonts:** Nunito 700 and 800 (headings, navigation, buttons) and Open Sans 400 and 600 (text) are in `app/assets/fonts/`, Latin and Latin Extended only, with their licences. Each file is a variable font, so one file covers both weights. They're served from the site, so visitors' browsers don't contact Google.
-- **Website type and spacing:** the sizes and spacing for each screen width are custom properties on `.site` at the top of `app/assets/site.css` (mobile below 768 px, tablet to 1023 px, desktop from 1024 px). Change them there rather than in each rule.
+- **Fonts:** Nunito 700/800 (headings, navigation, buttons) and Open Sans 400/600 (text) are in `app/assets/fonts/`; each file is a variable font covering both weights. The website's type scale is at the top of `app/assets/site.css`. The files are Latin and Latin Extended only, with their licences. They're served from the site, so visitors' browsers don't contact Google.
 - **Website pages** are plain HTML. Keep links starting with `/` (for example `/handbook/`); the deploy workflow adds the `/sketch-hour` part. The header and footer are repeated in each page, so change them everywhere with search and replace across `app/**/*.html`.
 - **Screenshots** in `app/assets/img/` are 1600 × 1000 WebP. Replace them with your own captures at the same size.
 - **Changelog:** add a new section at the top of `app/changelog/index.html` for each release.
