@@ -91,7 +91,7 @@ The boards the site shows are listed in `boards.json`:
 
 ## 4. Custom domain (optional)
 
-**Settings → Pages → Custom domain**, then add the DNS records GitHub shows you. Nothing in the code needs to change: the deploy workflow notices the site now lives at the domain root.
+**Settings → Pages → Custom domain**, then add the DNS records GitHub shows you (the site uses sketchhour.com, registered at Cloudflare). Nothing in the code needs to change: the deploy workflow notices the site now lives at the domain root.
 
 ## 5. Editing
 
@@ -99,7 +99,7 @@ The boards the site shows are listed in `boards.json`:
 - **Fonts:** Nunito 700/800 (headings, navigation, buttons) and Open Sans 400/600 (text) are in `app/assets/fonts/`; each file is a variable font covering both weights. The website's type scale is at the top of `app/assets/site.css`. The files are Latin and Latin Extended only, with their licences. They're served from the site, so visitors' browsers don't contact Google.
 - **Website pages** are plain HTML. Keep links starting with `/` (for example `/handbook/`); the deploy workflow adds the `/sketch-hour` part. The header and footer are repeated in each page, so change them everywhere with search and replace across `app/**/*.html`.
 - **Home page images** in `app/assets/img/`: `session.webp` is a full 1600 × 1000 capture; the `home-*.webp` files are crops of single panels taken at 2× so their text stays readable; `strip/` holds 360px-tall thumbnails of the photo references. The people in those photos need to sign releases before the images are used in paid marketing.
-- **Link preview:** every page points `og:image` at `https://tetisheri12.github.io/sketch-hour/assets/og.png`. If the site moves to its own domain, change that address in each page's head.
+- **Link preview:** every page points `og:image` at `https://sketchhour.com/assets/og.png`. If the domain changes, change that address in each page's head.
 - **Colours on the website** follow 60-30-10: off-white page, linen bands and cards, dusk blue for buttons, links and the shortcuts band. The rules are at the top of `app/assets/site.css`.
 - **Changelog:** add a new section at the top of `app/changelog/index.html` for each release.
 - **Curriculum:** see section 6.
