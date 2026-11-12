@@ -127,7 +127,10 @@ const S = {
 const localUrl = new Map();
 let readyResolve; const ready = new Promise(r => { readyResolve = r; });
 
-function boards() { return SYS.concat(S.published, S.boards.filter(b => !b.pinterest).sort((a, b) => (a.created || 0) - (b.created || 0))); }
+const byCreated = (a, b) => (a.created || 0) - (b.created || 0);
+// Pinterest boards the visitor added themselves (kept in this browser, refreshed on request).
+function myPinBoards() { return S.boards.filter(isMyPinBoard).sort(byCreated); }
+function boards() { return SYS.concat(S.published, myPinBoards(), S.boards.filter(b => !b.pinterest).sort(byCreated)); }
 function boardName(id) { const b = boards().find(x => x.id === id); return b ? b.name : 'Poses'; }
 function realRefs(board) {
   const pb = pinBoardOf(board);
@@ -233,7 +236,8 @@ const BASE = (() => {
   return new URL('../', location.href).href;
 })();
 function isPinBoard(b) { return !!(b && b.pinterest); }
-function pinBoardOf(id) { return S.published.find(b => b.id === id) || null; }
+function isMyPinBoard(b) { return !!(b && b.pinterest && b.pinterest.mine && Array.isArray(b.pins)); }
+function pinBoardOf(id) { return S.published.find(b => b.id === id) || S.boards.find(b => b.id === id && isMyPinBoard(b)) || null; }
 const pinRefCache = new Map();
 function pinRefs(b) {
   const c = pinRefCache.get(b.id);
@@ -249,6 +253,12 @@ function pinRefs(b) {
 // image server refuses requests without one, so museum images send just the site's address.
 function refPol(src) { return /^https:\/\/www\.artic\.edu\//.test(src || '') ? 'origin' : 'no-referrer'; }
 function setImg(el, r) { const s = srcOf(r); el.referrerPolicy = refPol(s); el.src = s; }
+function cleanPins(pins) {
+  return (Array.isArray(pins) ? pins : []).filter(p => p && typeof p.image === 'string' && /^https:\/\//.test(p.image)).map(p => ({
+    id: String(p.id), image: p.image, w: Number(p.w) || 0, h: Number(p.h) || 0,
+    title: String(p.title || '').slice(0, 140), link: safeLink(p.link || '')
+  }));
+}
 async function loadPublished() {
   try {
     const r = await fetch(BASE + 'data/boards.json', { cache: 'no-cache' });
@@ -259,10 +269,7 @@ async function loadPublished() {
       .map(b => ({
         id: b.id, name: String(b.name || 'Pinterest board').slice(0, 80),
         pinterest: { url: safeLink(b.url || ''), via: b.via || '', count: b.count || b.pins.length, partial: !!b.partial, syncedAt: Number(b.syncedAt) || 0 },
-        pins: b.pins.filter(p => p && typeof p.image === 'string' && /^https:\/\//.test(p.image)).map(p => ({
-          id: String(p.id), image: p.image, w: Number(p.w) || 0, h: Number(p.h) || 0,
-          title: String(p.title || '').slice(0, 140), link: safeLink(p.link || '')
-        }))
+        pins: cleanPins(b.pins)
       }));
   } catch { /* no published boards; everything else still works */ }
 }
@@ -273,15 +280,120 @@ function ago(t) {
   if (s < 86400) return Math.round(s / 3600) + ' h ago';
   return new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
+function pinMeta(b) {
+  const pi = b.pinterest, bits = [`${b.pins.length} pins`];
+  if (pi.syncedAt) bits.push('updated ' + ago(pi.syncedAt));
+  if (pi.via === 'rss') bits.push('recent pins only');
+  else if (pi.partial) bits.push('first 1,000 pins');
+  return bits.join(' · ');
+}
+function viewBoard(id) { S.libBoard = id; LS.set('sketchhour.lib', id); location.hash = '#library'; renderAll(); }
+function pinExt(b) { return b.pinterest.url ? h('a', { class: 'xbtn', href: b.pinterest.url, target: '_blank', rel: 'noopener', title: 'Open on Pinterest', 'aria-label': `Open ${b.name} on Pinterest` }, icon('ext')) : null; }
 function renderPublished() {
   const list = S.published;
   $('#pubList').replaceChildren(...list.map(b => h('li', null,
     h('span', { class: 'nm' }, b.name),
-    h('span', { class: 'meta' }, `${b.pins.length} pins${b.pinterest.syncedAt ? ' · updated ' + ago(b.pinterest.syncedAt) : ''}${b.pinterest.via === 'rss' ? ' · recent pins only' : ''}`),
+    h('span', { class: 'meta' }, pinMeta(b)),
     h('span', { class: 'acts' },
-      h('button', { type: 'button', class: 'btn sm', onclick: () => { S.libBoard = b.id; LS.set('sketchhour.lib', b.id); location.hash = '#library'; renderAll(); } }, 'View'),
-      b.pinterest.url ? h('a', { class: 'xbtn', href: b.pinterest.url, target: '_blank', rel: 'noopener', 'aria-label': `Open ${b.name} on Pinterest` }, icon('ext')) : null))));
+      h('button', { type: 'button', class: 'btn sm', onclick: () => viewBoard(b.id) }, 'View'),
+      pinExt(b)))));
   $('#pubEmpty').hidden = list.length > 0;
+}
+
+/* ============ Pinterest boards the visitor adds (beta) ============ */
+/* The browser can't read Pinterest boards itself, so Sketch Hour's small API on Azure does it
+   (api/ in the repo). The board and its pin list are then kept in this browser like any board. */
+const API = (() => {
+  const m = document.querySelector('meta[name="sh-api"]');
+  return m && /^https:\/\//.test(m.content) ? m.content.replace(/\/+$/, '') : '';
+})();
+async function fetchBoard(link) {
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), 60000);
+  try {
+    let r;
+    try {
+      r = await fetch(API + '/board?url=' + encodeURIComponent(link), { signal: ac.signal, credentials: 'omit', cache: 'no-store' });
+    } catch (e) {
+      throw new Error(e && e.name === 'AbortError' ? 'Pinterest took too long to answer. Try again in a moment.' : "Couldn't reach Sketch Hour's server. Check your connection and try again.");
+    }
+    let j = null;
+    try { j = await r.json(); } catch { j = null; }
+    if (!r.ok) throw new Error((j && typeof j.error === 'string' && j.error) || "Couldn't load that board. Try again in a moment.");
+    if (!j || !j.board || !Array.isArray(j.pins)) throw new Error("Sketch Hour's server sent an answer this page doesn't understand. Reload the page and try again.");
+    return j;
+  } finally { clearTimeout(t); }
+}
+/** Fetches a board and saves it (new, or replacing `existing` / the same board added before). */
+async function savePinterestBoard(link, existing) {
+  const j = await fetchBoard(link);
+  const key = j.board.id ? 'id:' + j.board.id : 'url:' + String(j.board.url || link).toLowerCase();
+  const prev = existing || myPinBoards().find(b => b.pinterest.key === key);
+  const b = {
+    id: prev ? prev.id : 'pv' + uid(),
+    name: String(j.board.name || 'Pinterest board').slice(0, 80),
+    created: prev ? prev.created : Date.now(),
+    pinterest: {
+      mine: true, key, url: safeLink(j.board.url || ''), via: j.via === 'rss' ? 'rss' : 'board',
+      count: Number(j.board.count) || j.pins.length, partial: !!j.partial, syncedAt: Number(j.fetchedAt) || Date.now()
+    },
+    pins: cleanPins(j.pins).slice(0, 1000)
+  };
+  await Store().putBoard(b);
+  return { board: b, updated: !!prev };
+}
+let pinBusy = false;
+async function submitPinBoard(e) {
+  e.preventDefault();
+  if (pinBusy) return;
+  const inp = $('#pinBoardUrl'), btn = $('#pinBoardGo');
+  const link = inp.value.trim();
+  if (!link) { toast('Paste the link of a Pinterest board first.'); inp.focus(); return; }
+  pinBusy = true; btn.disabled = true; btn.textContent = 'Loading…';
+  try {
+    await ready;
+    const { board, updated } = await savePinterestBoard(link);
+    inp.value = '';
+    renderAll();
+    toast(updated ? `${board.name} is up to date: ${board.pins.length} pins.` : `Added ${board.name} with ${board.pins.length} pins. It's in your Library.`);
+  } catch (err) {
+    toast(err && err.code ? errText(err) : err.message);
+  } finally {
+    pinBusy = false; btn.disabled = false; btn.textContent = 'Add board';
+  }
+}
+async function refreshPinBoard(b, btn) {
+  if (btn) btn.disabled = true;
+  try {
+    const { board } = await savePinterestBoard(b.pinterest.url, b);
+    renderAll();
+    toast(`${board.name} is up to date: ${board.pins.length} pins.`);
+  } catch (err) {
+    toast(err && err.code ? errText(err) : err.message);
+  } finally { if (btn && btn.isConnected) btn.disabled = false; }
+}
+async function removePinBoard(b) {
+  const ok = await ask(`Remove “${b.name}” from your Library? Your board on Pinterest isn't touched.`, 'Remove board');
+  if (!ok) return;
+  try { await Store().delBoard(b.id); } catch (e) { toast(errText(e)); return; }
+  pinRefCache.delete(b.id);
+  if (S.libBoard === b.id) { S.libBoard = 'poses'; LS.set('sketchhour.lib', 'poses'); }
+  renderAll(); toast(`Removed ${b.name}.`);
+}
+function renderMyPins() {
+  $('#pinAddBox').hidden = !API;
+  if (!API) return;
+  const list = myPinBoards();
+  const ul = $('#myPinList');
+  ul.hidden = !list.length;
+  ul.replaceChildren(...list.map(b => h('li', null,
+    h('span', { class: 'nm' }, b.name),
+    h('span', { class: 'meta' }, pinMeta(b)),
+    h('span', { class: 'acts' },
+      h('button', { type: 'button', class: 'btn sm', onclick: () => viewBoard(b.id) }, 'View'),
+      h('button', { type: 'button', class: 'xbtn', title: 'Refresh', 'aria-label': `Refresh ${b.name}`, onclick: e => refreshPinBoard(b, e.currentTarget) }, icon('refresh')),
+      pinExt(b),
+      h('button', { type: 'button', class: 'xbtn del', title: 'Remove', 'aria-label': `Remove ${b.name}`, onclick: () => removePinBoard(b) }, icon('trash'))))));
 }
 function errText(e) {
   const c = e && e.code;
@@ -559,7 +671,7 @@ function renderLibrary() {
   const pinb = isPinBoard(cur);
   $('#boardTabs').replaceChildren(...all.map(b => h('button', {
     type: 'button', class: 'chip', 'aria-pressed': String(b.id === S.libBoard),
-    title: isPinBoard(b) ? 'Synced from Pinterest' : null,
+    title: isMyPinBoard(b) ? 'Your Pinterest board' : isPinBoard(b) ? 'Synced from Pinterest' : null,
     onclick: () => { S.libBoard = b.id; LS.set('sketchhour.lib', b.id); boardFormMode = null; $('#boardForm').hidden = true; renderLibrary(); }
   }, b.name, h('span', { class: 'ct' }, isPinBoard(b) ? `${realRefs(b.id).length} pins` : String(realRefs(b.id).length)))),
   h('button', { type: 'button', class: 'chip add', onclick: () => openBoardForm('new') }, icon('plus'), 'New board'));
@@ -567,8 +679,10 @@ function renderLibrary() {
   if (pinb) {
     const pi = cur.pinterest;
     tools.replaceChildren(
-      h('span', null, `Synced from Pinterest · ${cur.pins.length} pins${pi.syncedAt ? ' · updated ' + ago(pi.syncedAt) : ''}`),
-      pi.url ? h('a', { class: 'linkish', href: pi.url, target: '_blank', rel: 'noopener' }, 'Open on Pinterest ↗') : null);
+      h('span', null, (pi.mine ? 'Your Pinterest board · ' : 'Synced from Pinterest · ') + pinMeta(cur)),
+      pi.mine ? h('button', { type: 'button', class: 'linkish', onclick: e => refreshPinBoard(cur, e.currentTarget) }, 'Refresh') : null,
+      pi.url ? h('a', { class: 'linkish', href: pi.url, target: '_blank', rel: 'noopener' }, 'Open on Pinterest ↗') : null,
+      pi.mine ? h('button', { type: 'button', class: 'linkish', onclick: () => removePinBoard(cur) }, 'Remove board') : null);
   } else if (cur.sys) tools.replaceChildren(h('span', null, cur.hint));
   else tools.replaceChildren(
     h('button', { type: 'button', class: 'linkish', onclick: () => openBoardForm('rename') }, 'Rename board'),
@@ -581,7 +695,7 @@ function renderLibrary() {
   if (!real.length) {
     note.hidden = false;
     note.textContent = pinb
-      ? 'This board has no image pins yet. It updates once a day.'
+      ? (isMyPinBoard(cur) ? 'This board has no image pins yet. Add pins on Pinterest, then press Refresh.' : 'This board has no image pins yet. It updates once a day.')
       : smp.length
         ? 'These are generated sample references so you can try a session right away. Add your own and they step aside.'
         : 'This board is empty. Drop files above, or paste an image with Ctrl+V.';
@@ -618,7 +732,7 @@ async function submitBoardForm(e) {
 }
 async function deleteCurrentBoard() {
   const pb = pinBoardOf(S.libBoard);
-  if (pb) return;
+  if (pb) { if (isMyPinBoard(pb)) removePinBoard(pb); return; }
   const id = S.libBoard, name = boardName(id), refs = realRefs(id).filter(r => !r.pending);
   const ok = await ask(refs.length ? `Delete “${name}” and its ${refs.length} reference${refs.length === 1 ? '' : 's'}? This can't be undone.` : `Delete “${name}”?`, 'Delete board');
   if (!ok) return;
@@ -641,6 +755,7 @@ function boardOptions(sel, value) {
 function renderSources() {
   boardOptions($('#pinBoard'), $('#pinBoard').value || LS.get('sketchhour.pinBoard', 'poses'));
   renderPublished();
+  renderMyPins();
 }
 const PIN_SEARCHES = ['gesture drawing poses', 'dynamic pose reference', 'head angles reference', 'hand pose reference', 'foreshortening pose', 'sitting pose reference', 'dramatic lighting portrait'];
 
@@ -2682,6 +2797,7 @@ function bind() {
   // sources: pinterest
   const pinBoard = $('#pinBoard');
   pinBoard.addEventListener('change', () => LS.set('sketchhour.pinBoard', pinBoard.value));
+  $('#pinBoardForm').addEventListener('submit', submitPinBoard);
   const bindPaste = (el, opts) => {
     el.addEventListener('paste', e => { e.preventDefault(); e.stopPropagation(); handlePaste(e.clipboardData, opts()); el.value = ''; });
     el.addEventListener('input', () => { el.value = ''; });

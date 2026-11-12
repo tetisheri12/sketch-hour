@@ -10,20 +10,21 @@
 #   - CORS so sketchhour.com (and the local test server) can read the library's index file and
 #     draw photos into the value-study canvas
 #   - the "Storage Blob Data Contributor" role for you, so azcopy can upload after `azcopy login`
-#   - a monthly budget with email alerts at 50 %, 80 % and 100 % of actual cost and 100 % of forecast
+#   - a monthly budget (in the billing currency) with email alerts at 50 %, 80 % and 100 % of actual cost and 100 % of forecast
 #
 # Run it in Azure Cloud Shell (Bash), where you are already signed in:
 #   ALERT_EMAIL=you@example.com bash setup-library.sh
 #
 # Running it again is safe: existing resources are kept and settings are reapplied.
-# Optional overrides: LOCATION, RG, ACCOUNT, BUDGET (USD per month).
+# Optional overrides: LOCATION, RG, ACCOUNT, BUDGET (per month, in the billing account's currency:
+# SEK for Sketch Hour, so the default 500 is about 50 USD; raise it as services are added).
 
 set -euo pipefail
 
 ALERT_EMAIL="${ALERT_EMAIL:-}"
 LOCATION="${LOCATION:-swedencentral}"
 RG="${RG:-rg-sketchhour}"
-BUDGET="${BUDGET:-300}"
+BUDGET="${BUDGET:-500}"
 SITE_ORIGINS=("https://sketchhour.com" "https://www.sketchhour.com" "http://localhost:4280")
 TAGS=(project=sketchhour env=pilot)
 
@@ -51,11 +52,18 @@ ACCOUNT="${ACCOUNT:-sketchhour$(printf '%s' "$SUB_ID" | sha1sum | cut -c1-6)}"
 echo "Subscription:    $SUB_NAME ($SUB_ID)"
 echo "Resource group:  $RG in $LOCATION"
 echo "Storage account: $ACCOUNT"
-echo "Budget:          $BUDGET USD a month, alerts to $ALERT_EMAIL"
+echo "Budget:          $BUDGET a month in your billing currency, alerts to $ALERT_EMAIL"
 read -r -p "Create these? [y/N] " answer
 [[ "$answer" == "y" || "$answer" == "Y" ]] || { echo "Nothing changed."; exit 0; }
 
 echo "1/7 Resource group"
+# A new subscription has to switch on each Azure service before first use; until then Azure answers "SubscriptionNotFound".
+for ns in Microsoft.Storage Microsoft.Consumption; do
+  if [[ "$(az provider show --namespace "$ns" --query registrationState -o tsv 2>/dev/null)" != "Registered" ]]; then
+    echo "    switching on $ns for this subscription (takes a minute or two)"
+    az provider register --namespace "$ns" --wait -o none
+  fi
+done
 az group create --name "$RG" --location "$LOCATION" --tags "${TAGS[@]}" -o none
 
 echo "2/7 Storage account"
@@ -73,7 +81,7 @@ else
     --tags "${TAGS[@]}" -o none
 fi
 ACCOUNT_ID=$(az storage account show --name "$ACCOUNT" --resource-group "$RG" --query id -o tsv)
-KEY=$(az storage account keys list --account-name "$ACCOUNT" --resource-group "$RG" --query "[0].value" -o tsv)
+KEY=$(az storage account keys list --account-name "$ACCOUNT" --resource-group "$RG" --query "[0].value" -o tsv --only-show-errors)  # kept in memory only, never printed
 
 echo "3/7 Containers"
 retry az storage container create --account-name "$ACCOUNT" --account-key "$KEY" --name web --public-access blob -o none
@@ -147,7 +155,7 @@ if az rest --method get --url "$BUDGET_URL" -o none 2>/dev/null; then
   echo "    already exists (change the amount in the portal: Cost Management > Budgets)"
 elif ! az rest --method put --url "$BUDGET_URL" --body "$BODY" -o none; then
   echo "    The budget could not be created (the error above says why). Everything else is ready."
-  echo "    Try the portal: Cost Management > Budgets > Add, $BUDGET USD monthly, alerts at 50, 80 and 100 %."
+  echo "    Try the portal: Cost Management > Budgets > Add, $BUDGET monthly, alerts at 50, 80 and 100 %."
   echo "    Some sponsorship subscriptions don't offer budgets yet; then watch spending under"
   echo "    Cost Management + Billing, or at microsoftazuresponsorships.com/usage for older sponsorships."
 fi

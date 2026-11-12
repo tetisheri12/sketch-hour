@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://i.pinimg.com https://www.artic.edu; media-src 'self' blob:; connect-src 'self' blob: data: https://i.pinimg.com https://www.artic.edu; font-src 'self'; base-uri 'self'; form-action 'self'">
+<meta name="sh-api" content="https://sketchhour-api-f03f9a.azurewebsites.net/api">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://i.pinimg.com https://www.artic.edu; media-src 'self' blob:; connect-src 'self' blob: data: https://i.pinimg.com https://www.artic.edu https://sketchhour-api-f03f9a.azurewebsites.net; font-src 'self'; base-uri 'self'; form-action 'self'">
 <title>Practice · Sketch Hour</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M7 29.5c1.6-8.6 6-15 14.5-20.4' fill='none' stroke='%238d9cb7' stroke-width='3.2' stroke-linecap='round'/%3E%3Cellipse cx='24.6' cy='6.2' rx='3.3' ry='4' transform='rotate(32 24.6 6.2)' fill='none' stroke='%23515e7e' stroke-width='2'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/assets/styles.css">
@@ -45,7 +46,7 @@
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11.5M7 11l5 5 5-5"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></symbol>
   <symbol id="i-points" viewBox="0 0 24 24"><circle cx="6" cy="17" r="2.5"/><circle cx="18" cy="7" r="2.5"/><path d="M8 15.4l8-7" stroke-dasharray="2 2.5"/></symbol>
   <symbol id="i-corners" viewBox="0 0 24 24"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><path d="M8.5 8l7.5 1-1 7-7.5-1z"/></symbol>
-  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></symbol><symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
 </svg>
 
 <header class="top">
@@ -229,9 +230,21 @@
     <div class="src-grid">
       <article class="card src" aria-labelledby="pinH">
         <header><span class="src-tag">Pinterest</span><h2 id="pinH">Pinterest boards</h2></header>
-        <p class="muted">These boards are synced from Pinterest once a day and appear in your Library, ready for a session.</p>
-        <ul class="synced" id="pubList"></ul>
-        <p class="empty" id="pubEmpty">No Pinterest boards on this site yet.</p>
+        <div class="pin-add" id="pinAddBox" hidden>
+          <h3>Add your board <span class="beta">Beta</span></h3>
+          <form class="pin-form" id="pinBoardForm" novalidate>
+            <input type="url" id="pinBoardUrl" inputmode="url" autocomplete="off" spellcheck="false" placeholder="pinterest.com/username/board-name" aria-label="Pinterest board link">
+            <button type="submit" class="btn primary" id="pinBoardGo">Add board</button>
+          </form>
+          <p class="fine">Public boards, up to 1,000 pins. The board is saved in this browser and appears in your Library. While this is in beta it can stop working for a while if Pinterest changes how boards load.</p>
+          <ul class="synced" id="myPinList"></ul>
+        </div>
+        <div class="sub">
+          <h3>Sketch Hour boards</h3>
+          <p class="muted">Synced from Pinterest once a day and ready in your Library.</p>
+          <ul class="synced" id="pubList"></ul>
+          <p class="empty" id="pubEmpty">No Pinterest boards on this site yet.</p>
+        </div>
         <div class="sub">
           <h3>Add single pins</h3>
           <ol class="steps">

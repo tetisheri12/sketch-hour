@@ -127,17 +127,14 @@ node test/dev-server.js         # http://localhost:4280, app at /practice/
 
 The preview server answers like GitHub Pages: folders open their `index.html`, and missing pages show `404.html`.
 
-**Tests:** `node --test test/sync.test.js` (board sync against a fake Pinterest, link prefixing). GitHub Actions runs them on every push.
+**Tests:** `node --test test/sync.test.js test/api.test.js` (board sync and the board API against a fake Pinterest, link prefixing). GitHub Actions runs them on every push.
 
 ## 8. What GitHub Pages can't do
 
-GitHub Pages only serves files, so this version has no server. That rules out:
+GitHub Pages only serves files. The one thing that needs a server today, reading visitors' own Pinterest boards, runs on Azure (section 10). Still missing:
 
-- visitors syncing **their own** Pinterest boards (they paste pins instead),
 - signing in with Pinterest, accounts, and payments for paid features,
 - sharing a library or curriculum progress between devices (everything a visitor adds stays in their browser).
-
-When you add paid features you'll need a service that runs code next to the site. The earlier Azure version of this project already has board sync by link and Pinterest sign-in written for that, if you want to start from it.
 
 ## 9. Photo library on Azure (pilot)
 
@@ -157,12 +154,24 @@ It shows the subscription and names it will use and asks before creating anythin
 | Container `web` | web-size copies (WebP, about 1600px) | public by address, can't be listed |
 | Container `originals` | full-size files | private, moves to the Cool tier after a day |
 | Soft delete | 7 days | for photos and containers |
-| Budget | `sketchhour-monthly`, 300 USD | emails at 50, 80 and 100 % of actual cost, and when the forecast passes 100 % |
+| Budget | `sketchhour-monthly`, 500 a month | in the billing currency (SEK here, about 50 USD; raise it as services are added); emails at 50, 80 and 100 % of actual cost, and when the forecast passes 100 % |
 
-Change the defaults by putting them in front of the command, for example `BUDGET=150 LOCATION=northeurope ALERT_EMAIL=… bash setup-library.sh`.
+Change the defaults by putting them in front of the command, for example `BUDGET=1500 LOCATION=northeurope ALERT_EMAIL=… bash setup-library.sh`.
 
 Upload from your computer with [azcopy](https://learn.microsoft.com/azure/storage/common/storage-use-azcopy-v10); the script prints the exact commands at the end. Give a web file a new name whenever its picture changes, because browsers are told to keep each one for a year.
 
 Anyone who has a photo's address can open it, which is what the site needs. The full-size originals stay private.
 
 **Credits:** startup credits are used up at normal pay-as-you-go prices, so a budget alert means real use of your credits. Not every sponsorship subscription supports budgets yet; if the last step fails, the script says so and you can watch spending under **Cost Management + Billing** in the portal instead (older sponsorships show it at microsoftazuresponsorships.com/usage). Credits and their expiry dates are on the Microsoft for Startups dashboard.
+
+## 10. Board API on Azure (visitors' own Pinterest boards, beta)
+
+Browsers can't read Pinterest boards directly, so **Sources → Add your board** asks a small server: an Azure Function in `api/`. It answers `GET /api/board?url=<board link>` with the board's name and pins, using the same reader as the daily sync (`scripts/lib/pinterest-public.js`). The app keeps the result in the visitor's browser.
+
+- Only `https://sketchhour.com`, `https://www.sketchhour.com` and the local preview may call it (the `ALLOWED_ORIGINS` setting, plus Azure's CORS list).
+- Each board is kept in memory for 15 minutes, and one visitor can add 30 boards per 10 minutes.
+- The app finds the server through `<meta name="sh-api">` in `app/practice/index.html`; the same address is in that page's `connect-src`. If the address changes, change both.
+
+**Build and deploy.** `bash tools/azure/build-api.sh` makes `dist/sketchhour-api.zip` (needs Node 20+). Upload that zip and `tools/azure/setup-board-api.sh` to Cloud Shell and run `bash setup-board-api.sh`. The first run creates the function app (Flex Consumption, Node 22) in `rg-sketchhour`; later runs only deploy the new zip. At the end it fetches the site's own board as a test.
+
+**Beta, and why.** The reader uses Pinterest's website data, not their official API, and Pinterest's terms don't allow automated collection without their permission. Before the paid launch, switch to the official API (Sign in with Pinterest), which needs Pinterest to approve the app at developers.pinterest.com.

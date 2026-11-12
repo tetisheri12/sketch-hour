@@ -4,3 +4,4 @@ node_modules/
 # written by scripts/sync-boards.js during deploy and local previews
 app/data/
 __pycache__/
+dist/

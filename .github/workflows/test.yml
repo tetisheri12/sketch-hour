@@ -9,7 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Board sync tests (against a fake Pinterest)
-        run: node --test test/sync.test.js
+      - name: Install the board API's one dependency
+        run: npm ci --prefix api --omit=dev --no-audit --no-fund
+      - name: Board sync and board API tests (against a fake Pinterest)
+        run: node --test test/sync.test.js test/api.test.js
       - name: App script parses
         run: node --check app/assets/app.js

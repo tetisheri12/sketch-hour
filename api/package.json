@@ -1,0 +1,11 @@
+{
+  "name": "sketchhour-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sketch Hour's small server on Azure Functions: reads public Pinterest boards for the app.",
+  "main": "src/functions/*.js",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@azure/functions": "4.17.0"
+  }
+}
