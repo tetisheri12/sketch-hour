@@ -319,6 +319,10 @@ input::placeholder,textarea::placeholder{color:var(--text-weak);opacity:.85}
 @media (hover:none){.ref .cap{opacity:1}}
 .ref.pending img,.ref.pending video{opacity:.5}
 .ref.pending::after{content:"Saving…";position:absolute;right:var(--s2);top:var(--s2);font-size:var(--size-tiny);font-weight:600;line-height:1.5;background:var(--scrim);color:var(--on-scrim);padding:0 var(--s2);border-radius:var(--r-sm)}
+.ref.picking{cursor:pointer}
+.ref.picking:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.ref.hid img,.ref.hid video{opacity:.28;filter:grayscale(1)}
+.ref.hid::after{content:"Hidden";position:absolute;right:var(--s2);top:var(--s2);font-size:var(--size-tiny);font-weight:600;line-height:1.5;background:var(--scrim);color:var(--on-scrim);padding:0 var(--s2);border-radius:var(--r-sm)}
 .usage{font-size:var(--size-tiny);color:var(--text-weak);margin-top:var(--s3);font-variant-numeric:tabular-nums}
 
 /* ---------- timer ---------- */

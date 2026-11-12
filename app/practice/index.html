@@ -46,7 +46,7 @@
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11.5M7 11l5 5 5-5"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></symbol>
   <symbol id="i-points" viewBox="0 0 24 24"><circle cx="6" cy="17" r="2.5"/><circle cx="18" cy="7" r="2.5"/><path d="M8 15.4l8-7" stroke-dasharray="2 2.5"/></symbol>
   <symbol id="i-corners" viewBox="0 0 24 24"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><path d="M8.5 8l7.5 1-1 7-7.5-1z"/></symbol>
-  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></symbol><symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-hide" viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c5 0 9 4.5 10 7a13 13 0 0 1-3.2 4.3M6.6 6.6C4.3 8 2.6 10.1 2 12c1 2.5 5 7 10 7a9.8 9.8 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol><symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></symbol><symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
 </svg>
 
 <header class="top">
@@ -530,9 +530,10 @@
       <button type="button" class="ib" id="plGray" aria-label="Grayscale (G)" aria-pressed="false"><svg class="i"><use href="#i-gray"/></svg></button>
       <button type="button" class="ib" id="plFlip" aria-label="Mirror (F)" aria-pressed="false"><svg class="i"><use href="#i-flip"/></svg></button>
       <button type="button" class="ib" id="plGridBtn" aria-label="Thirds grid (T)" aria-pressed="false"><svg class="i"><use href="#i-grid"/></svg></button>
+      <button type="button" class="ib" id="plHide" aria-label="Hide this photo from its board (H)" title="Hide this photo from its board (H)" hidden><svg class="i"><use href="#i-hide"/></svg></button>
       <button type="button" class="ib" id="plSound" aria-label="Sound cues (S)" aria-pressed="true"><svg class="i"><use href="#i-sound"/></svg></button>
       <button type="button" class="ib" id="plFs" aria-label="Fullscreen"><svg class="i"><use href="#i-expand"/></svg></button>
-      <div class="pl-keys">Space pause · ←/→ skip<br>G gray · F mirror · T grid</div>
+      <div class="pl-keys">Space pause · ←/→ skip<br>G gray · F mirror · T grid · H hide</div>
     </div>
   </div>
   <div class="pl-bar"><i id="plBar"></i></div>
@@ -594,6 +595,9 @@
     <div class="grp" id="vwStudio">
       <button type="button" class="ib" id="vwCompose" aria-label="Compose in the Studio"><svg class="i"><use href="#i-crop"/></svg></button>
       <button type="button" class="ib" id="vwCompare" aria-label="Compare a sketch in the Studio"><svg class="i"><use href="#i-layers"/></svg></button>
+    </div>
+    <div class="grp" id="vwPin" hidden>
+      <button type="button" class="ib" id="vwHide" aria-label="Hide from this board (H)" title="Hide from this board (H)"><svg class="i"><use href="#i-hide"/></svg></button>
     </div>
     <div class="grp" id="vwOwn">
       <button type="button" class="ib" id="vwEditBtn" aria-label="Edit note and board"><svg class="i"><use href="#i-edit"/></svg></button>

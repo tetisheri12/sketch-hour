@@ -117,7 +117,7 @@ const S = {
   boards: [],
   refs: new Map(),
   pending: new Map(),
-  meta: { log: [], pins: [], learn: { done: {}, secs: {} } },
+  meta: { log: [], pins: [], learn: { done: {}, secs: {} }, hidden: {} },
   samples: { poses: [], film: [], places: [] },
   samplesReady: false,
   published: [],
@@ -134,15 +134,14 @@ function boards() { return SYS.concat(S.published, myPinBoards(), S.boards.filte
 function boardName(id) { const b = boards().find(x => x.id === id); return b ? b.name : 'Poses'; }
 function realRefs(board) {
   const pb = pinBoardOf(board);
-  if (pb) return pinRefs(pb);
+  if (pb) { const hid = hiddenPins(board); return hid.size ? pinRefs(pb).filter(r => !hid.has(r.pin)) : pinRefs(pb); }
   const out = [];
   for (const r of S.refs.values()) if (r.board === board) out.push(r);
   for (const r of S.pending.values()) if (r.board === board && !S.refs.has(r.id)) out.push(r);
   return out.sort((a, b) => (b.created || 0) - (a.created || 0));
 }
 function savedCount(board) {
-  const pb = pinBoardOf(board);
-  if (pb) return (pb.pins || []).length;
+  if (pinBoardOf(board)) return realRefs(board).length;
   let n = 0; for (const r of S.refs.values()) if (r.board === board) n++; return n;
 }
 function poolFor(board) { const real = realRefs(board).filter(r => !r.pending); return real.length ? real : (S.samples[board] || []); }
@@ -190,7 +189,7 @@ const Local = {
       }
       S.boards = await IDB.all('boards');
       const m = await IDB.get('meta', 'state');
-      if (m) S.meta = { log: m.log || [], pins: m.pins || [], learn: Object.assign({ done: {}, secs: {} }, m.learn || {}) };
+      if (m) S.meta = { log: m.log || [], pins: m.pins || [], learn: Object.assign({ done: {}, secs: {} }, m.learn || {}), hidden: (m.hidden && typeof m.hidden === 'object') ? m.hidden : {} };
       S.mode = 'local'; setStatus('ok', 'Saved in this browser');
     } catch {
       S.mode = 'memory'; setStatus('warn', 'Not saved · storage blocked here');
@@ -218,7 +217,7 @@ const Local = {
     if (S.mode === 'local') await IDB.put('boards', b);
   },
   async delBoard(id) { S.boards = S.boards.filter(b => b.id !== id); if (S.mode === 'local') await IDB.del('boards', id); },
-  async saveMeta() { if (S.mode === 'local') await IDB.put('meta', { k: 'state', log: S.meta.log.slice(-400), pins: S.meta.pins, learn: S.meta.learn }); }
+  async saveMeta() { if (S.mode === 'local') await IDB.put('meta', { k: 'state', log: S.meta.log.slice(-400), pins: S.meta.pins, learn: S.meta.learn, hidden: S.meta.hidden }); }
 };
 
 const Store = () => Local;
@@ -243,11 +242,22 @@ function pinRefs(b) {
   const c = pinRefCache.get(b.id);
   if (c && c.at === b.pinterest.syncedAt) return c.refs;
   const refs = (b.pins || []).map((p, i) => ({
-    id: 'pin-' + b.id + '-' + p.id, board: b.id, kind: /\.gif(\?|$)/i.test(p.image) ? 'gif' : 'image',
+    id: 'pin-' + b.id + '-' + p.id, pin: p.id, board: b.id, kind: /\.gif(\?|$)/i.test(p.image) ? 'gif' : 'image',
     url: p.image, remote: true, w: p.w || 0, h: p.h || 0, note: p.title || '', link: p.link || '', created: -i
   }));
   pinRefCache.set(b.id, { at: b.pinterest.syncedAt, refs });
   return refs;
+}
+/* Pins you don't want to draw from can be hidden per board. Only the pin ids are kept (in this browser),
+   so a refresh or the daily sync doesn't bring them back, and showing them again is one click. */
+function hiddenPins(boardId) { return new Set((S.meta.hidden && S.meta.hidden[boardId]) || []); }
+function isPinRef(r) { return !!(r && r.remote && r.pin && pinBoardOf(r.board)); }
+function setPinHidden(boardId, pinId, hide) {
+  const set = hiddenPins(boardId);
+  if (hide) set.add(pinId); else set.delete(pinId);
+  if (!S.meta.hidden) S.meta.hidden = {};
+  if (set.size) S.meta.hidden[boardId] = Array.from(set); else delete S.meta.hidden[boardId];
+  persistMeta();
 }
 // The page sends no referrer (so Pinterest isn't told which page you're on). The Art Institute of Chicago's
 // image server refuses requests without one, so museum images send just the site's address.
@@ -376,6 +386,7 @@ async function removePinBoard(b) {
   if (!ok) return;
   try { await Store().delBoard(b.id); } catch (e) { toast(errText(e)); return; }
   pinRefCache.delete(b.id);
+  if (S.meta.hidden && S.meta.hidden[b.id]) { delete S.meta.hidden[b.id]; persistMeta(); }
   if (S.libBoard === b.id) { S.libBoard = 'poses'; LS.set('sketchhour.lib', 'poses'); }
   renderAll(); toast(`Removed ${b.name}.`);
 }
@@ -663,35 +674,49 @@ function refCard(r, list, idx) {
   return n;
 }
 let boardFormMode = null;
+let hiding = null;   // id of the Pinterest board whose photos are being picked to hide
 function renderLibrary() {
   const all = boards();
   if (!all.some(b => b.id === S.libBoard) && S.loaded) S.libBoard = 'poses';
   const cur = all.find(b => b.id === S.libBoard) || all[0];
   const pinb = isPinBoard(cur);
+  if (hiding && (!pinb || hiding !== cur.id)) hiding = null;
+  const hid = pinb ? hiddenPins(cur.id) : new Set();
   $('#boardTabs').replaceChildren(...all.map(b => h('button', {
     type: 'button', class: 'chip', 'aria-pressed': String(b.id === S.libBoard),
     title: isMyPinBoard(b) ? 'Your Pinterest board' : isPinBoard(b) ? 'Synced from Pinterest' : null,
-    onclick: () => { S.libBoard = b.id; LS.set('sketchhour.lib', b.id); boardFormMode = null; $('#boardForm').hidden = true; renderLibrary(); }
+    onclick: () => { S.libBoard = b.id; LS.set('sketchhour.lib', b.id); boardFormMode = null; hiding = null; $('#boardForm').hidden = true; renderLibrary(); }
   }, b.name, h('span', { class: 'ct' }, isPinBoard(b) ? `${realRefs(b.id).length} pins` : String(realRefs(b.id).length)))),
   h('button', { type: 'button', class: 'chip add', onclick: () => openBoardForm('new') }, icon('plus'), 'New board'));
   const tools = $('#boardTools');
-  if (pinb) {
-    const pi = cur.pinterest;
+  if (pinb && hiding) {
     tools.replaceChildren(
+      h('span', null, hid.size ? `${hid.size} of ${cur.pins.length} photos hidden` : 'No photos hidden yet'),
+      h('button', { type: 'button', class: 'btn sm primary', onclick: () => { hiding = null; renderLibrary(); } }, 'Done'));
+  } else if (pinb) {
+    const pi = cur.pinterest;
+    tools.replaceChildren(...[   // replaceChildren would write out a null as the text "null"
       h('span', null, (pi.mine ? 'Your Pinterest board · ' : 'Synced from Pinterest · ') + pinMeta(cur)),
+      h('button', { type: 'button', class: 'linkish', onclick: () => { hiding = cur.id; renderLibrary(); } }, hid.size ? `Hide photos (${hid.size} hidden)` : 'Hide photos'),
       pi.mine ? h('button', { type: 'button', class: 'linkish', onclick: e => refreshPinBoard(cur, e.currentTarget) }, 'Refresh') : null,
       pi.url ? h('a', { class: 'linkish', href: pi.url, target: '_blank', rel: 'noopener' }, 'Open on Pinterest ↗') : null,
-      pi.mine ? h('button', { type: 'button', class: 'linkish', onclick: () => removePinBoard(cur) }, 'Remove board') : null);
+      pi.mine ? h('button', { type: 'button', class: 'linkish', onclick: () => removePinBoard(cur) }, 'Remove board') : null].filter(Boolean));
   } else if (cur.sys) tools.replaceChildren(h('span', null, cur.hint));
   else tools.replaceChildren(
     h('button', { type: 'button', class: 'linkish', onclick: () => openBoardForm('rename') }, 'Rename board'),
     h('button', { type: 'button', class: 'linkish', onclick: deleteCurrentBoard }, 'Delete board'));
   $('#drop').hidden = pinb; $('#libAdd').hidden = pinb;
-  const real = realRefs(S.libBoard);
+  const real = hiding ? pinRefs(cur) : realRefs(S.libBoard);
   const smp = pinb ? [] : (S.samples[S.libBoard] || []);
   const items = real.length ? real : smp;
   const note = $('#sampleNote');
-  if (!real.length) {
+  if (hiding) {
+    note.hidden = false;
+    note.textContent = 'Click the photos you don’t want to draw from. They disappear from this board and its sessions; click one again to bring it back.';
+  } else if (!real.length && hid.size) {
+    note.hidden = false;
+    note.textContent = 'Every photo on this board is hidden. Press Hide photos to bring some back.';
+  } else if (!real.length) {
     note.hidden = false;
     note.textContent = pinb
       ? (isMyPinBoard(cur) ? 'This board has no image pins yet. Add pins on Pinterest, then press Refresh.' : 'This board has no image pins yet. It updates once a day.')
@@ -701,7 +726,18 @@ function renderLibrary() {
   } else note.hidden = true;
   const live = new Set(items.map(r => r.id));
   for (const id of Array.from(cardCache.keys())) if (!live.has(id) && !id.startsWith('s-')) cardCache.delete(id);
-  $('#grid').replaceChildren(...items.map((r, i) => refCard(r, items, i)));
+  $('#grid').replaceChildren(...items.map((r, i) => {
+    const n = refCard(r, items, i);
+    const off = !!hiding && hid.has(r.pin);
+    n.classList.toggle('hid', off);
+    n.classList.toggle('picking', !!hiding);
+    if (hiding) {
+      n.setAttribute('aria-pressed', String(off));
+      n.setAttribute('aria-label', (off ? 'Hidden: ' : 'Hide: ') + (r.note || 'photo'));
+      n.onclick = () => { setPinHidden(cur.id, r.pin, !hiddenPins(cur.id).has(r.pin)); renderAll(); };
+    } else n.removeAttribute('aria-pressed');
+    return n;
+  }));
 }
 function openBoardForm(mode) {
   boardFormMode = mode;
@@ -798,10 +834,12 @@ function showEntry() {
     const nx = P.plan.slice(P.i + 1).find(x => x.t === 'pose');
     $('#plBreakNext').textContent = nx ? `Next: ${dlabel(nx.dur)} pose` : '';
     $('#plCount').textContent = 'Break';
+    $('#plHide').hidden = true;
     $('#plNote').textContent = '';
     $('#plVid').pause();
   } else {
     $('#plCount').textContent = `Pose ${e.no} of ${P.poses}`;
+    $('#plHide').hidden = !isPinRef(e.ref);
     $('#plNote').textContent = e.ref.note || boardName(e.ref.board);
     setStageMedia(e.ref);
     const nx = P.plan.slice(P.i + 1).find(x => x.t === 'pose');
@@ -854,6 +892,32 @@ function tickPlayer(now) {
   if (sec !== P.lastSec) { P.lastSec = sec; if (P.sound && e.t === 'pose' && e.dur >= 20 && sec >= 1 && sec <= 3) sfx.tick(); }
   if (P.left <= 0) { if (P.sound) sfx.change(); advance(1); return; }
   drawPlayerClock();
+}
+/** Hides the pin on screen from its board and swaps in another photo for this pose (and any later one). */
+function hidePlaying() {
+  const e = P.plan[P.i]; if (!e || e.t !== 'pose' || !isPinRef(e.ref)) return;
+  const gone = e.ref;
+  setPinHidden(gone.board, gone.pin, true);
+  const left = realRefs(gone.board).filter(r => !r.pending);
+  const used = new Set(P.plan.filter(x => x.t === 'pose' && x.ref).map(x => x.ref.id));
+  const fresh = shuffle(left.filter(r => !used.has(r.id)));
+  let swapped = false;
+  P.plan.forEach((x, i) => {
+    if (x.t !== 'pose' || !x.ref || x.ref.id !== gone.id) return;
+    const nx = fresh.pop() || (left.length ? left[Math.floor(Math.random() * left.length)] : null);
+    if (!nx) return;
+    x.ref = nx;
+    if (i === P.i) swapped = true;
+  });
+  renderAll();
+  if (swapped) {
+    P.spent[P.i] = 0;
+    showEntry(); poke();
+    toast('Hidden from this board. Here’s another photo.');
+  } else {
+    toast('Hidden from this board.');
+    advance(1);
+  }
 }
 function advance(dir) {
   if (dir > 0) {
@@ -1081,6 +1145,7 @@ async function loadViewer() {
   $('#vwFrames').hidden = r.kind === 'image';
   $('#vwValues').disabled = r.kind !== 'image';
   $('#vwOwn').hidden = !!(r.sample || r.remote || r.cur);
+  $('#vwPin').hidden = !isPinRef(r);
   $('#vwPrevRef').hidden = $('#vwNextRef').hidden = V.list.length < 2;
   layoutViewer(); applyViewerLooks(); renderValues(); updFrameUI();
 }
@@ -1269,6 +1334,16 @@ async function deleteViewed() {
   cardCache.delete(r.id);
   V.list.splice(V.i, 1);
   renderAll(); scheduleUsage(); toast('Reference deleted.');
+  if (!V.list.length) { closeViewer(); return; }
+  if (V.i >= V.list.length) V.i = 0;
+  loadViewer();
+}
+
+function hideViewed() {
+  const r = V.list[V.i]; if (!isPinRef(r)) return;
+  setPinHidden(r.board, r.pin, true);
+  V.list.splice(V.i, 1);
+  renderAll(); toast(`Hidden from ${boardName(r.board)}. Hide photos in the Library brings it back.`);
   if (!V.list.length) { closeViewer(); return; }
   if (V.i >= V.list.length) V.i = 0;
   loadViewer();
@@ -2915,6 +2990,8 @@ function bind() {
   $('#vwEditCancel').addEventListener('click', () => { $('#vwEdit').hidden = true; });
   $('#vwEdit').addEventListener('submit', saveEdit);
   $('#vwDel').addEventListener('click', deleteViewed);
+  $('#vwHide').addEventListener('click', hideViewed);
+  $('#plHide').addEventListener('click', () => { hidePlaying(); });
   $('#vwCompose').addEventListener('click', () => stFromViewer('compose'));
   $('#vwCompare').addEventListener('click', () => stFromViewer('compare'));
   stBindStudio();
@@ -2943,6 +3020,7 @@ function bind() {
       else if (k === 'f') $('#plFlip').click();
       else if (k === 't') $('#plGridBtn').click();
       else if (k === 's') $('#plSound').click();
+      else if (k === 'h') hidePlaying();
       else if (e.key === 'Escape' && !document.fullscreenElement) { e.preventDefault(); finishSession(false); }
       poke();
       return;
@@ -2957,6 +3035,7 @@ function bind() {
       else if (k === 'g') $('#vwGray').click();
       else if (k === 't') $('#vwGridBtn').click();
       else if (k === 'v') cycleValues();
+      else if (k === 'h') hideViewed();
       else if (e.key === '+' || e.key === '=') zoomAt(1.4);
       else if (e.key === '-') zoomAt(1 / 1.4);
       else if (e.key === '0') fitView();
