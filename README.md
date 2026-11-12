@@ -84,7 +84,7 @@ The boards the site shows are listed in `boards.json`:
 
 ## 3. Before you share the link
 
-- [ ] Replace the placeholder address `hello@example.com` in `app/support/index.html`, `app/privacy/index.html` and `app/terms/index.html`.
+- [x] Contact address: `hello@sketchhour.com` on the Support, Privacy and Terms pages. Cloudflare Email Routing forwards it to Gmail, and Gmail sends replies as hello@ through Gmail's own mail server. Keep the DMARC record at `p=none` while replies go through Gmail; a stricter setting would send them to spam.
 - [ ] Have the Privacy and Terms pages reviewed. They describe what the code does in plain language but weren't written by a lawyer, and EU rules (GDPR) apply to visitors from Sweden and the rest of the EU.
 - [ ] Check that the name and a domain are free to use (a web search found no drawing app called Sketch Hour, but that isn't a trademark search).
 - [ ] Choose a license if the repository is public (none is included, which means all rights reserved).
@@ -138,3 +138,31 @@ GitHub Pages only serves files, so this version has no server. That rules out:
 - sharing a library or curriculum progress between devices (everything a visitor adds stays in their browser).
 
 When you add paid features you'll need a service that runs code next to the site. The earlier Azure version of this project already has board sync by link and Pinterest sign-in written for that, if you want to start from it.
+
+## 9. Photo library on Azure (pilot)
+
+`tools/azure/setup-library.sh` sets up storage for your own pose and portrait photos. Run it once in **Azure Cloud Shell** (portal.azure.com, the `>_` button at the top, choose Bash):
+
+```bash
+# upload setup-library.sh with the Manage files button, then:
+ALERT_EMAIL=you@example.com bash setup-library.sh
+```
+
+It shows the subscription and names it will use and asks before creating anything. Running it again is safe.
+
+| What | Name | Notes |
+|---|---|---|
+| Resource group | `rg-sketchhour` | Sweden Central |
+| Storage account | `sketchhour` + 6 characters | Standard, locally redundant |
+| Container `web` | web-size copies (WebP, about 1600px) | public by address, can't be listed |
+| Container `originals` | full-size files | private, moves to the Cool tier after a day |
+| Soft delete | 7 days | for photos and containers |
+| Budget | `sketchhour-monthly`, 300 USD | emails at 50, 80 and 100 % of actual cost, and when the forecast passes 100 % |
+
+Change the defaults by putting them in front of the command, for example `BUDGET=150 LOCATION=northeurope ALERT_EMAIL=… bash setup-library.sh`.
+
+Upload from your computer with [azcopy](https://learn.microsoft.com/azure/storage/common/storage-use-azcopy-v10); the script prints the exact commands at the end. Give a web file a new name whenever its picture changes, because browsers are told to keep each one for a year.
+
+Anyone who has a photo's address can open it, which is what the site needs. The full-size originals stay private.
+
+**Credits:** startup credits are used up at normal pay-as-you-go prices, so a budget alert means real use of your credits. Not every sponsorship subscription supports budgets yet; if the last step fails, the script says so and you can watch spending under **Cost Management + Billing** in the portal instead (older sponsorships show it at microsoftazuresponsorships.com/usage). Credits and their expiry dates are on the Microsoft for Startups dashboard.
