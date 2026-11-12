@@ -20,8 +20,8 @@ const log = {
   warn: m => console.log(inActions ? `::warning::${m}` : `warning: ${m}`)
 };
 
+// From the board's address, so the id stays the same whichever Pinterest feed answered.
 function boardKey(data, entryUrl) {
-  if (data.board.id) return 'pb-' + String(data.board.id).replace(/[^0-9A-Za-z_-]/g, '');
   let p = '';
   try { p = new URL(data.board.url || entryUrl).pathname; } catch { p = entryUrl; }
   return 'pb-' + p.replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase().slice(0, 80);
@@ -82,7 +82,7 @@ async function syncBoards(entries, previous) {
       };
       out.push(board);
       log.info(`Synced "${board.name}": ${board.pins.length} pins.`);
-      if (data.via === 'rss') log.warn(`"${board.name}": Pinterest only shared the most recent pins.`);
+      if (data.partial) log.warn(`"${board.name}": Pinterest only shared the newest ${board.pins.length} of ${board.count} pins (${data.via} feed).`);
     } catch (e) {
       const prev = prevBoards.find(b => b.source === entry.url);
       if (prev && !seen.has(prev.id)) {

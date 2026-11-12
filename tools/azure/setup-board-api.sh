@@ -108,7 +108,8 @@ done
 echo "4/5 Deploying $ZIP"
 retry az functionapp deployment source config-zip --name "$APP" --resource-group "$RG" --src "$ZIP" -o none
 
-HOST=$(az functionapp show --name "$APP" --resource-group "$RG" --query defaultHostName -o tsv)
+# Flex Consumption apps come back as raw Azure JSON, with the address under "properties".
+HOST=$(az functionapp show --name "$APP" --resource-group "$RG" --query "properties.defaultHostName || defaultHostName" -o tsv)
 API="https://$HOST/api"
 
 echo "5/5 Trying it with the site's own board"

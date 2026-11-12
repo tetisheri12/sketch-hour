@@ -36,7 +36,7 @@ function json(obj, status = 200) {
 }
 
 const calls = [];
-/** Replacement for global fetch. Options: rssOnly (JSON endpoints fail), missing (true, or a list of board slugs that 404), down (Pinterest unreachable). */
+/** Replacement for global fetch. Options: rssOnly (the widget feed fails), missing (true, or a list of board slugs that 404), down (Pinterest unreachable). */
 function makeFetch(opts = {}) {
   return async function fakeFetch(url, init = {}) {
     const u = new URL(String(url));
@@ -53,19 +53,18 @@ function makeFetch(opts = {}) {
       return r;
     }
     const isMissing = slug => opts.missing === true || (Array.isArray(opts.missing) && opts.missing.includes(slug));
-    if (u.hostname === 'www.pinterest.com' && opts.down) throw new TypeError('fetch failed');
-    if (u.hostname === 'www.pinterest.com' && u.pathname.startsWith('/resource/')) {
+    if ((u.hostname === 'www.pinterest.com' || u.hostname === 'widgets.pinterest.com') && opts.down) throw new TypeError('fetch failed');
+    if (u.hostname === 'widgets.pinterest.com' && u.pathname.startsWith('/v3/pidgets/boards/')) {
       if (opts.rssOnly) return new Response('blocked', { status: 403 });
-      const data = JSON.parse(u.searchParams.get('data'));
-      if (u.pathname.includes('BoardResource')) {
-        if (isMissing(data.options.slug)) return json({ resource_response: { status: 'failure' } }, 404);
-        return json({ resource_response: { data: { id: '555', name: 'Head studies', pin_count: PINS.length } } });
-      }
-      if (u.pathname.includes('BoardFeedResource')) {
-        const first = !data.options.bookmarks;
-        const page = first ? PINS.slice(0, 4).concat([{ id: 'ad1', type: 'story' }]) : PINS.slice(4);
-        return json({ resource_response: { data: page, bookmark: first ? 'BM1' : '-end-' } });
-      }
+      const slug = u.pathname.split('/')[5];
+      if (isMissing(slug)) return json({ status: 'failure', message: 'not found', data: null }, 404);
+      // like the real feed: 564px and 237px sizes, a board pin count larger than what it returns, and the odd broken entry
+      const pins = PINS.map(p => ({
+        id: p.id, description: p.grid_title,
+        images: { '237x': { url: p.images['236x'].url.replace('/236x/', '/237x/'), width: 237, height: 316 }, '564x': { url: p.images['236x'].url.replace('/236x/', '/564x/'), width: 564, height: 752 } }
+      }));
+      pins.push({ id: PINS[0].id, images: pins[0].images }, { id: '9999', images: {} });
+      return json({ status: 'success', data: { board: { id: '555', name: 'Head studies', pin_count: PINS.length + 3 }, pins } });
     }
     if (u.hostname === 'www.pinterest.com' && u.pathname.endsWith('.rss')) {
       if (isMissing(u.pathname.split('/')[2].replace(/\.rss$/, ''))) return new Response('not found', { status: 404 });

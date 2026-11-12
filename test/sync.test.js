@@ -5,24 +5,30 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { makeFetch } = require('./fake-pinterest');
+const { makeFetch, calls } = require('./fake-pinterest');
 const { fetchPublicBoard } = require('../scripts/lib/pinterest-public');
 const { syncBoards, readConfig } = require('../scripts/sync-boards');
 const { prefix } = require('../scripts/prefix-base');
 
 const BOARD = 'https://www.pinterest.com/example-artist/head-studies/';
 
-test('board link: pages through the feed and skips anything that is not a pin', async () => {
+test('board link: reads the widget feed, skips duplicates and pins without images', async () => {
   global.fetch = makeFetch();
   const d = await fetchPublicBoard('https://se.pinterest.com/example-artist/head-studies/');
-  assert.equal(d.via, 'board');
+  assert.equal(d.via, 'widget');
   assert.equal(d.board.name, 'Head studies');
+  assert.equal(d.board.count, 10);
   assert.equal(d.pins.length, 7);
-  assert.match(d.pins[0].image, /\/originals\//);
+  assert.equal(d.partial, true);
+  assert.match(d.note, /newest 7 pins/);
+  assert.match(d.pins[0].image, /^https:\/\/i\.pinimg\.com\/736x\//);
+  assert.equal(d.pins[0].w, 564);
+  assert.equal(d.pins[0].title, 'Head study 1');
   assert.equal(d.pins[0].link, 'https://www.pinterest.com/pin/1000/');
+  assert.ok(!calls.some(c => c.startsWith('/resource/')), 'never calls the blocked web-app endpoints');
 });
 
-test('board link: falls back to RSS when the JSON endpoints are blocked', async () => {
+test('board link: falls back to RSS when the widget feed is blocked', async () => {
   global.fetch = makeFetch({ rssOnly: true });
   const d = await fetchPublicBoard('pinterest.com/example-artist/head-studies');
   assert.equal(d.via, 'rss');
@@ -44,7 +50,7 @@ test('sync: writes every board it can fetch, with a stable id', async () => {
   const r = await syncBoards([{ url: BOARD, name: 'My heads' }], null);
   assert.equal(r.boards.length, 1);
   const b = r.boards[0];
-  assert.equal(b.id, 'pb-555');
+  assert.equal(b.id, 'pb-example-artist-head-studies');
   assert.equal(b.name, 'My heads');
   assert.equal(b.source, BOARD);
   assert.equal(b.pins.length, 7);
@@ -63,7 +69,7 @@ test('sync: keeps the live copy of a board Pinterest will not return today', asy
 test('sync: a deleted board is dropped when there is no earlier copy', async () => {
   global.fetch = makeFetch({ missing: ['gone'] });
   const r = await syncBoards([{ url: 'https://www.pinterest.com/example-artist/gone/' }, { url: BOARD }], null);
-  assert.deepEqual(r.boards.map(b => b.id), ['pb-555']);
+  assert.deepEqual(r.boards.map(b => b.id), ['pb-example-artist-head-studies']);
 });
 
 test('config: accepts plain links or objects, and explains mistakes', () => {

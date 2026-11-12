@@ -28,7 +28,8 @@ test('api: answers a public board with its name and pins', async () => {
   assert.equal(r.status, 200);
   assert.equal(r.jsonBody.board.name, 'Head studies');
   assert.equal(r.jsonBody.pins.length, 7);
-  assert.equal(r.jsonBody.via, 'board');
+  assert.equal(r.jsonBody.via, 'widget');
+  assert.equal(r.jsonBody.partial, true);
   assert.ok(r.jsonBody.fetchedAt > 0);
   assert.match(r.headers['Content-Type'], /application\/json/);
 });

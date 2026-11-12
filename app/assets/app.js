@@ -281,10 +281,9 @@ function ago(t) {
   return new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
 function pinMeta(b) {
-  const pi = b.pinterest, bits = [`${b.pins.length} pins`];
+  const pi = b.pinterest, n = b.pins.length;
+  const bits = [(pi.partial || pi.via === 'rss') ? (pi.count > n ? `newest ${n} of ${pi.count} pins` : `${n} newest pins`) : `${n} pins`];
   if (pi.syncedAt) bits.push('updated ' + ago(pi.syncedAt));
-  if (pi.via === 'rss') bits.push('recent pins only');
-  else if (pi.partial) bits.push('first 1,000 pins');
   return bits.join(' · ');
 }
 function viewBoard(id) { S.libBoard = id; LS.set('sketchhour.lib', id); location.hash = '#library'; renderAll(); }
@@ -327,14 +326,14 @@ async function fetchBoard(link) {
 /** Fetches a board and saves it (new, or replacing `existing` / the same board added before). */
 async function savePinterestBoard(link, existing) {
   const j = await fetchBoard(link);
-  const key = j.board.id ? 'id:' + j.board.id : 'url:' + String(j.board.url || link).toLowerCase();
+  const key = 'url:' + String(j.board.url || link).toLowerCase();   // the same whichever Pinterest feed answered
   const prev = existing || myPinBoards().find(b => b.pinterest.key === key);
   const b = {
     id: prev ? prev.id : 'pv' + uid(),
     name: String(j.board.name || 'Pinterest board').slice(0, 80),
     created: prev ? prev.created : Date.now(),
     pinterest: {
-      mine: true, key, url: safeLink(j.board.url || ''), via: j.via === 'rss' ? 'rss' : 'board',
+      mine: true, key, url: safeLink(j.board.url || ''), via: ['widget', 'rss', 'board'].includes(j.via) ? j.via : 'board',
       count: Number(j.board.count) || j.pins.length, partial: !!j.partial, syncedAt: Number(j.fetchedAt) || Date.now()
     },
     pins: cleanPins(j.pins).slice(0, 1000)

@@ -1,11 +1,13 @@
 'use strict';
 /*
- * Reads a PUBLIC Pinterest board from its link. Used by scripts/sync-boards.js in the deploy workflow.
+ * Reads a PUBLIC Pinterest board from its link. Used by scripts/sync-boards.js in the deploy
+ * workflow and by the board API (api/).
  *
- * This is not an official API. It uses the JSON endpoints Pinterest's own web
- * app calls (BoardResource / BoardFeedResource), and falls back to the board's
- * RSS feed, which only lists the most recent pins. Pinterest can change either
- * at any time; when it does, this file is the only thing to fix.
+ * This is not an official API. It reads the feed behind Pinterest's embeddable board widget
+ * (the newest 50 pins) and falls back to the board's RSS feed (the newest 25 or so).
+ * Pinterest's own web-app endpoints (BoardResource/BoardFeedResource), which this file used
+ * before, answer 403 since autumn 2026, so they aren't called any more. Pinterest can change
+ * the remaining feeds at any time; when it does, this file is the only thing to fix.
  */
 const { httpError, UA, fetchT, bestImage, cleanText } = require('./util');
 
@@ -45,79 +47,47 @@ async function parseBoardUrl(input) {
   };
 }
 
-async function resource(name, sourceUrl, options) {
-  const q = new URLSearchParams({
-    source_url: sourceUrl,
-    data: JSON.stringify({ options, context: {} }),
-    _: String(Date.now())
+const NOT_FOUND = "Pinterest couldn't find that board. Check the link and make sure the board isn't secret.";
+
+/**
+ * Pinterest's embed widget feed: the board's name, pin count and newest pins (50 at most).
+ * It is what Pinterest's own board widget for other websites loads.
+ */
+async function viaWidget(b, maxPins) {
+  const r = await fetchT(`https://widgets.pinterest.com/v3/pidgets/boards/${encodeURIComponent(b.username)}/${encodeURIComponent(b.slug)}/pins/`, {
+    headers: { 'User-Agent': UA, Accept: 'application/json' }
   });
-  const r = await fetchT(`https://www.pinterest.com/resource/${name}/get/?${q}`, {
-    headers: {
-      'User-Agent': UA,
-      Accept: 'application/json, text/javascript, */*; q=0.01',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'X-Requested-With': 'XMLHttpRequest',
-      'X-Pinterest-AppState': 'active',
-      'X-Pinterest-Source-Url': sourceUrl
-    }
-  });
-  if (r.status === 404) throw httpError(404, "Pinterest couldn't find that board. Check the link and make sure the board isn't secret.");
+  if (r.status === 404) throw httpError(404, NOT_FOUND);
   if (!r.ok) throw httpError(502, `Pinterest answered with status ${r.status}.`);
   const j = await r.json().catch(() => null);
-  if (!j || !j.resource_response) throw httpError(502, 'Pinterest sent an answer this app does not understand.');
-  return j.resource_response;
-}
-
-function normPin(p) {
-  if (!p || !p.id) return null;
-  if (p.type && p.type !== 'pin') return null; // skips ads, "more ideas" modules, stories
-  const img = bestImage(p.images) || (p.image_large_url ? { url: p.image_large_url } : null);
-  if (!img || !img.url) return null;
-  return {
-    id: String(p.id),
-    image: img.url,
-    w: img.width || 0,
-    h: img.height || 0,
-    title: cleanText(p.grid_title || p.title || p.description || p.auto_alt_text || ''),
-    link: `https://www.pinterest.com/pin/${p.id}/`
-  };
-}
-
-/** Full board via Pinterest's web JSON, paging with bookmarks. */
-async function viaJson(b, maxPins) {
-  const br = await resource('BoardResource', b.path, { username: b.username, slug: b.slug, field_set_key: 'detailed' });
-  const bd = br.data;
-  if (!bd || !bd.id) throw httpError(404, "Pinterest couldn't find that board. Check the link and make sure the board isn't secret.");
-
+  const d = j && j.data;
+  if (!d || !Array.isArray(d.pins)) throw httpError(502, 'Pinterest sent an answer this app does not understand.');
   const pins = [];
   const seen = new Set();
-  let bookmark = null;
-  for (let page = 0; page < 60 && pins.length < maxPins; page++) {
-    const options = {
-      board_id: String(bd.id),
-      board_url: b.path,
-      field_set_key: 'react_grid_pin',
-      filter_section_pins: false,
-      layout: 'default',
-      page_size: 50,
-      redux_normalize_feed: true
-    };
-    if (bookmark) options.bookmarks = [bookmark];
-    const fr = await resource('BoardFeedResource', b.path, options);
-    const items = Array.isArray(fr.data) ? fr.data : [];
-    for (const raw of items) {
-      const p = normPin(raw);
-      if (p && !seen.has(p.id)) { seen.add(p.id); pins.push(p); }
-    }
-    bookmark = fr.bookmark;
-    if (!bookmark || bookmark === '-end-' || items.length === 0) break;
+  for (const p of d.pins) {
+    if (!p || !p.id || seen.has(String(p.id))) continue;
+    const img = bestImage(p.images);
+    if (!img || typeof img.url !== 'string' || !/^https:\/\/i\.pinimg\.com\//.test(img.url)) continue;
+    seen.add(String(p.id));
+    pins.push({
+      id: String(p.id),
+      image: img.url.replace(/\/\d+x\d*(?:_RS)?\//, '/736x/'),   // the widget's largest size is 564px wide
+      w: img.width || 0,
+      h: img.height || 0,
+      title: cleanText(p.description || p.title || ''),
+      link: `https://www.pinterest.com/pin/${encodeURIComponent(String(p.id))}/`
+    });
   }
+  const bd = d.board || {};
+  const count = Number(bd.pin_count) || pins.length;
+  const partial = count > pins.length;
   return {
     method: 'public',
-    via: 'board',
-    board: { id: String(bd.id), name: cleanText(bd.name || b.slug, 80), url: b.url, owner: b.username, count: Number(bd.pin_count) || pins.length },
+    via: 'widget',
+    board: { id: String(bd.id || ''), name: cleanText(bd.name || b.slug, 80), url: b.url, owner: b.username, count },
     pins: pins.slice(0, maxPins),
-    partial: pins.length >= maxPins
+    partial,
+    note: partial ? `Pinterest only shares the newest ${pins.length} pins of a board.` : ''
   };
 }
 
@@ -138,7 +108,7 @@ async function viaRss(b) {
   const r = await fetchT(`https://www.pinterest.com/${encodeURIComponent(b.username)}/${encodeURIComponent(b.slug)}.rss`, {
     headers: { 'User-Agent': UA, Accept: 'application/rss+xml, application/xml, text/xml' }
   });
-  if (r.status === 404) throw httpError(404, "Pinterest couldn't find that board. Check the link and make sure the board isn't secret.");
+  if (r.status === 404) throw httpError(404, NOT_FOUND);
   if (!r.ok) throw httpError(502, `Pinterest answered with status ${r.status}.`);
   const xml = await r.text();
   const channel = xml.split('<item')[0];
@@ -169,23 +139,33 @@ async function viaRss(b) {
     board: { id: '', name, url: b.url, owner: b.username, count: pins.length },
     pins,
     partial: true,
-    note: 'Pinterest only shared the most recent pins of this board.'
+    note: 'Pinterest only shared the newest pins of this board.'
   };
 }
 
+/** Widget feed first; if it fails or comes back empty, the RSS feed. */
 async function fetchPublicBoard(input, { maxPins = 1000 } = {}) {
   const b = await parseBoardUrl(input);
+  let first;
   try {
-    const res = await viaJson(b, maxPins);
+    const res = await viaWidget(b, maxPins);
     if (res.pins.length || res.board.count === 0) return res;
-    throw httpError(502, 'Pinterest returned the board without its pins.');
+    first = httpError(502, 'Pinterest returned the board without its pins.');
   } catch (e) {
-    if (e.status === 404 || e.status === 400) throw e;
-    let rss = null;
-    try { rss = await viaRss(b); } catch { rss = null; }
-    if (rss && rss.pins.length) return rss;
-    throw e;
+    first = e;
   }
+  let rss = null;
+  try {
+    rss = await viaRss(b);
+  } catch (e) {
+    if (e.status === 404) throw e;   // both feeds agree, or the widget failed for another reason: the board isn't there
+  }
+  if (rss && rss.pins.length) {
+    rss.pins = rss.pins.slice(0, maxPins);
+    return rss;
+  }
+  if (first && first.status === 404 && rss) return rss;   // an empty but existing board
+  throw first;
 }
 
-module.exports = { fetchPublicBoard, parseBoardUrl, normPin, viaRss };
+module.exports = { fetchPublicBoard, parseBoardUrl, viaWidget, viaRss };

@@ -72,12 +72,12 @@ The boards the site shows are listed in `boards.json`:
 - `name` is optional; without it the board's Pinterest name is used.
 - Add or remove boards, commit and push. The site updates in a minute or two.
 - The deploy also runs **once a day** (03:23 UTC) to pick up pins you've saved. Run it any time from **Actions → Deploy to GitHub Pages → Run workflow**.
-- Boards must be **public** on Pinterest. Up to 1,000 pins per board.
+- Boards must be **public** on Pinterest. Pinterest shares the **newest 50 pins** of each board (the run warns when a board has more).
 - If Pinterest refuses a board on a given day, the site keeps the copy that's already live, and the run shows a warning. A board that has never synced is skipped.
 
 **Know the limits of this:**
 
-- The sync reads Pinterest's public board pages, not an official API. Pinterest can change them, or block requests from GitHub's servers, without notice. If that happens, the boards stay as they were last synced; `scripts/lib/pinterest-public.js` is the file to fix.
+- The sync reads the feed behind Pinterest's embeddable board widget (newest 50 pins), with the board's RSS feed (newest 25 or so) as a fallback. That isn't an official API. Pinterest blocked the web-app endpoints this used before (they answer 403 since autumn 2026) and can change these feeds too, without notice. If that happens, the boards stay as they were last synced; `scripts/lib/pinterest-public.js` is the file to fix.
 - Pinterest's terms don't allow scraping. Fine for practicing from your own boards; for the public, paid version, plan to replace it with each user's own boards through Pinterest's official API, which needs a server (see section 8).
 - Every visitor sees these boards, because the pin list is published with the site. The images load from Pinterest; they aren't copied into the repository.
 - GitHub turns off scheduled workflows in **public** repositories after 60 days without activity. Push a commit or run the workflow by hand to restart it.
@@ -169,7 +169,8 @@ Anyone who has a photo's address can open it, which is what the site needs. The 
 Browsers can't read Pinterest boards directly, so **Sources → Add your board** asks a small server: an Azure Function in `api/`. It answers `GET /api/board?url=<board link>` with the board's name and pins, using the same reader as the daily sync (`scripts/lib/pinterest-public.js`). The app keeps the result in the visitor's browser.
 
 - Only `https://sketchhour.com`, `https://www.sketchhour.com` and the local preview may call it (the `ALLOWED_ORIGINS` setting, plus Azure's CORS list).
-- Each board is kept in memory for 15 minutes, and one visitor can add 30 boards per 10 minutes.
+- Each board is kept in memory for 15 minutes, and one visitor can add 30 boards per 10 minutes. Like the daily sync, it gets the newest 50 pins of a board.
+- `tools/azure/pinterest-check.sh [username/board]` (read-only, run it in Cloud Shell) shows what each Pinterest feed answers, for when boards stop loading.
 - The app finds the server through `<meta name="sh-api">` in `app/practice/index.html`; the same address is in that page's `connect-src`. If the address changes, change both.
 
 **Build and deploy.** `bash tools/azure/build-api.sh` makes `dist/sketchhour-api.zip` (needs Node 20+). Upload that zip and `tools/azure/setup-board-api.sh` to Cloud Shell and run `bash setup-board-api.sh`. The first run creates the function app (Flex Consumption, Node 22) in `rg-sketchhour`; later runs only deploy the new zip. At the end it fetches the site's own board as a test.
