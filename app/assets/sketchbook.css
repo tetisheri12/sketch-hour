@@ -33,10 +33,10 @@
 .drw{position:relative;display:block;color:var(--line);pointer-events:none}
 .drw::before{content:"";position:absolute;inset:0;background:currentColor;-webkit-mask:var(--src) center/contain no-repeat;mask:var(--src) center/contain no-repeat}
 .drw.stretch::before{-webkit-mask-size:100% 100%;mask-size:100% 100%}
-.d-class-1{--src:url(img/drawings/class-1-warmup.svg)}
-.d-class-2{--src:url(img/drawings/class-2-short.svg)}
-.d-class-3{--src:url(img/drawings/class-3-longer.svg)}
-.d-class-4{--src:url(img/drawings/class-4-study.svg)}
+.d-class-1{--src:url(img/drawings/class-1-warmup.webp)}
+.d-class-2{--src:url(img/drawings/class-2-short.webp)}
+.d-class-3{--src:url(img/drawings/class-3-longer.webp)}
+.d-class-4{--src:url(img/drawings/class-4-study.webp)}
 .d-icon-timer{--src:url(img/drawings/icon-timer.svg)}
 .d-icon-references{--src:url(img/drawings/icon-references.svg)}
 .d-icon-path{--src:url(img/drawings/icon-path.svg)}
@@ -132,9 +132,6 @@ a.hand{text-decoration:underline;text-decoration-thickness:1px;text-underline-of
 /* ---------- how a class runs ---------- */
 .steps{list-style:none;margin:44px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px 22px}
 .steps li{display:grid;gap:10px;align-content:start}
-.step-box{position:relative;aspect-ratio:3/4;max-width:100%;border:2.4px solid var(--line);border-radius:var(--hand-r);background:var(--print)}
-.steps li:nth-child(even) .step-box{border-radius:var(--hand-r2)}
-.step-box .fig{position:absolute;inset:7%}
 .steps h3{font-size:var(--h4);line-height:1.3}
 .steps .hand{font-size:1.5rem}
 @media (max-width:899.98px){.steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -202,3 +199,22 @@ a.hand{text-decoration:underline;text-decoration-thickness:1px;text-underline-of
 /* keep the handwritten line close to the heading it belongs to */
 .sk .steps .hand{margin-top:-4px}
 .sk .sticky :is(h3,p){margin:0}
+
+/* ---------- class drawings on watercolour paper ----------
+   Cold-press grain, edges torn against a ruler (a fuzzy, slightly see-through fibre edge), a soft shadow.
+   The paper stays light in dark mode, so shading in the drawings never turns into light patches. */
+.sk{--wc-paper:#fffefb;--wc-ink:var(--ink);--wc-shadow:rgba(23,24,28,.16);--wc-grain:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='300'%20height='400'%20viewBox='0%200%20300%20400'%20preserveAspectRatio='none'%3E%20%3Cfilter%20id='g'%20x='0'%20y='0'%20width='100%25'%20height='100%25'%20color-interpolation-filters='sRGB'%3E%20%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='.13'%20numOctaves='5'%20seed='5'%20result='n'/%3E%20%3CfeDiffuseLighting%20in='n'%20surfaceScale='1'%20lighting-color='%23fff'%3E%3CfeDistantLight%20azimuth='225'%20elevation='55'/%3E%3C/feDiffuseLighting%3E%20%3CfeComponentTransfer%3E%3CfeFuncR%20type='linear'%20slope='.16'%20intercept='.87'/%3E%3CfeFuncG%20type='linear'%20slope='.16'%20intercept='.87'/%3E%3CfeFuncB%20type='linear'%20slope='.16'%20intercept='.87'/%3E%3C/feComponentTransfer%3E%20%3C/filter%3E%3Crect%20width='300'%20height='400'%20filter='url(%23g)'/%3E%3C/svg%3E")}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .sk{--wc-paper:#efebe3;--wc-shadow:rgba(0,0,0,.6)}}
+:root[data-theme="dark"] .sk{--wc-paper:#efebe3;--wc-shadow:rgba(0,0,0,.6)}
+.step-box{position:relative;aspect-ratio:3/4;max-width:100%}
+.steps li:nth-child(1) .step-box{transform:rotate(-.7deg)}
+.steps li:nth-child(2) .step-box{transform:rotate(.5deg)}
+.steps li:nth-child(3) .step-box{transform:rotate(-.3deg)}
+.steps li:nth-child(4) .step-box{transform:rotate(.8deg)}
+.step-box .paper{position:absolute;inset:0;filter:drop-shadow(0 1px 1px var(--wc-shadow)) drop-shadow(0 8px 10px color-mix(in srgb,var(--wc-shadow) 55%,transparent))}
+.step-box .paper > span{position:absolute;inset:0;background-color:var(--wc-paper);background-image:var(--wc-grain);background-size:100% 100%;background-blend-mode:multiply;-webkit-mask:var(--wc-edge) center/100% 100% no-repeat;mask:var(--wc-edge) center/100% 100% no-repeat}
+.steps li:nth-child(1) .paper > span{--wc-edge:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='300'%20height='400'%20viewBox='0%200%20300%20400'%20preserveAspectRatio='none'%3E%20%3Cfilter%20id='f'%20x='-4%25'%20y='-4%25'%20width='108%25'%20height='108%25'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='.8'%20numOctaves='2'%20seed='4'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20scale='11'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3C/filter%3E%20%3Cfilter%20id='t'%20x='-4%25'%20y='-4%25'%20width='108%25'%20height='108%25'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='.12%20.35'%20numOctaves='3'%20seed='3'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20scale='7'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3C/filter%3E%20%3Cpath%20d='M10%2018%20C%2080%204,%20200%202,%20290%2012%20C%20299%20110,%20293%20290,%20289%20389%20C%20200%20397,%2090%20399,%2013%20391%20C%203%20300,%201%20130,%2010%2018%20Z'%20fill='%23000'%20fill-opacity='.55'%20filter='url(%23f)'/%3E%20%3Cpath%20d='M10%2018%20C%2080%204,%20200%202,%20290%2012%20C%20299%20110,%20293%20290,%20289%20389%20C%20200%20397,%2090%20399,%2013%20391%20C%203%20300,%201%20130,%2010%2018%20Z'%20transform='translate(150%20200)%20scale(.985)%20translate(-150%20-200)'%20fill='%23000'%20filter='url(%23t)'/%3E%3C/svg%3E")}
+.steps li:nth-child(2) .paper > span{--wc-edge:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='300'%20height='400'%20viewBox='0%200%20300%20400'%20preserveAspectRatio='none'%3E%20%3Cfilter%20id='f'%20x='-4%25'%20y='-4%25'%20width='108%25'%20height='108%25'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='.8'%20numOctaves='2'%20seed='18'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20scale='11'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3C/filter%3E%20%3Cfilter%20id='t'%20x='-4%25'%20y='-4%25'%20width='108%25'%20height='108%25'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='.12%20.35'%20numOctaves='3'%20seed='17'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20scale='7'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3C/filter%3E%20%3Cpath%20d='M7%209%20C%20100%2016,%20222%2018,%20293%208%20C%20289%20120,%20299%20300,%20292%20391%20C%20190%20384,%20100%20391,%209%20397%20C%2015%20290,%202%20110,%207%209%20Z'%20fill='%23000'%20fill-opacity='.55'%20filter='url(%23f)'/%3E%20%3Cpath%20d='M7%209%20C%20100%2016,%20222%2018,%20293%208%20C%20289%20120,%20299%20300,%20292%20391%20C%20190%20384,%20100%20391,%209%20397%20C%2015%20290,%202%20110,%207%209%20Z'%20transform='translate(150%20200)%20scale(.985)%20translate(-150%20-200)'%20fill='%23000'%20filter='url(%23t)'/%3E%3C/svg%3E")}
+.steps li:nth-child(3) .paper > span{--wc-edge:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='300'%20height='400'%20viewBox='0%200%20300%20400'%20preserveAspectRatio='none'%3E%20%3Cfilter%20id='f'%20x='-4%25'%20y='-4%25'%20width='108%25'%20height='108%25'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='.8'%20numOctaves='2'%20seed='30'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20scale='11'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3C/filter%3E%20%3Cfilter%20id='t'%20x='-4%25'%20y='-4%25'%20width='108%25'%20height='108%25'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='.12%20.35'%20numOctaves='3'%20seed='29'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20scale='7'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3C/filter%3E%20%3Cpath%20d='M13%209%20C%20110%202,%20190%207,%20290%2017%20C%20299%20140,%20287%20280,%20294%20389%20C%20210%20399,%2080%20392,%207%20395%20C%201%20280,%2011%20140,%2013%209%20Z'%20fill='%23000'%20fill-opacity='.55'%20filter='url(%23f)'/%3E%20%3Cpath%20d='M13%209%20C%20110%202,%20190%207,%20290%2017%20C%20299%20140,%20287%20280,%20294%20389%20C%20210%20399,%2080%20392,%207%20395%20C%201%20280,%2011%20140,%2013%209%20Z'%20transform='translate(150%20200)%20scale(.985)%20translate(-150%20-200)'%20fill='%23000'%20filter='url(%23t)'/%3E%3C/svg%3E")}
+.steps li:nth-child(4) .paper > span{--wc-edge:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='300'%20height='400'%20viewBox='0%200%20300%20400'%20preserveAspectRatio='none'%3E%20%3Cfilter%20id='f'%20x='-4%25'%20y='-4%25'%20width='108%25'%20height='108%25'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='.8'%20numOctaves='2'%20seed='42'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20scale='11'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3C/filter%3E%20%3Cfilter%20id='t'%20x='-4%25'%20y='-4%25'%20width='108%25'%20height='108%25'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='.12%20.35'%20numOctaves='3'%20seed='41'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20scale='7'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3C/filter%3E%20%3Cpath%20d='M8%2015%20C%2090%209,%20230%201,%20292%208%20C%20287%20120,%20298%20262,%20290%20394%20C%20220%20389,%2090%20399,%2011%20389%20C%203%20302,%209%20100,%208%2015%20Z'%20fill='%23000'%20fill-opacity='.55'%20filter='url(%23f)'/%3E%20%3Cpath%20d='M8%2015%20C%2090%209,%20230%201,%20292%208%20C%20287%20120,%20298%20262,%20290%20394%20C%20220%20389,%2090%20399,%2011%20389%20C%203%20302,%209%20100,%208%2015%20Z'%20transform='translate(150%20200)%20scale(.985)%20translate(-150%20-200)'%20fill='%23000'%20filter='url(%23t)'/%3E%3C/svg%3E")}
+.step-box .fig{position:absolute;inset:8%;color:var(--wc-ink)}
