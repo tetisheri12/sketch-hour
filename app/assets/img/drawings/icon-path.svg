@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-<g fill="none" stroke="#17181c" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
-<g transform="translate(8 26) scale(4.8)" stroke-width="2.6">
-<path d="M6 64 C 18 58, 14 46, 28 42 S 44 36, 48 26 S 62 16, 68 14" stroke-dasharray="2 7"/>
-<path d="M68 14 V2 L78 6 L68 10"/>
-<circle cx="6" cy="64" r="4" fill="#17181c"/>
-</g>
-</g>
-</svg>
