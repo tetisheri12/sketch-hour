@@ -2777,21 +2777,35 @@ function renderUnit(u) {
   const prev = CUR.units.get(CUR.order[i - 1]), next = CUR.units.get(CUR.order[i + 1]);
   const p = unitProg(u);
   const sets = [...new Set(u.ex.filter(e => e.set).map(e => e.set))];
-  $('#lnUnit').replaceChildren(
+  const list = (tag, cls, items) => h(tag, { class: cls }, ...items.map(x => h('li', null, x)));
+  const look = h('div', null, h('div', { class: 'lbl' }, 'Look for'), list('ul', 'ln-look', u.look));
+  $('#lnUnit').replaceChildren(...[
     h('button', { type: 'button', class: 'linkish ln-back', onclick: () => { location.hash = '#learn'; } }, '← All units'),
     h('header', { class: 'ln-unit-head' },
       h('span', { class: 'lbl' }, `${u.track.name} · Level ${u.level} of ${u.track.units.length} · Term ${term}`),
       h('h2', null, u.title),
       h('p', null, u.goal)),
-    h('section', null, h('div', { class: 'lbl', style: 'margin-bottom:8px' }, 'Look for'), h('ul', { class: 'ln-look' }, ...u.look.map(x => h('li', null, x)))),
-    h('section', null,
-      h('div', { class: 'lbl', style: 'margin-bottom:8px' }, `Exercises · ${p.d} of ${p.n} done`),
+    u.why ? h('section', { class: 'ln-why' }, h('div', { class: 'lbl' }, 'Why this unit'), h('p', null, u.why)) : null,
+    // lesson: the method on the left, what to look for and common mistakes on the right
+    u.steps ? h('section', { class: 'ln-guide' },
+      h('div', { class: 'ln-guide-how' }, h('div', { class: 'lbl' }, 'How to do it'), list('ol', 'ln-steps', u.steps)),
+      h('div', { class: 'ln-guide-side' }, look,
+        u.mistakes ? h('div', null, h('div', { class: 'lbl' }, 'Common mistakes'), list('ul', 'ln-mistakes', u.mistakes)) : null),
+      u.credit ? h('p', { class: 'ln-method' }, 'Method from ',
+        h('a', { href: 'https://drawabox.com/', target: '_blank', rel: 'noopener' }, 'Drawabox'), ': ',
+        ...u.credit.flatMap((c, k) => [k ? ' · ' : null, h('a', { href: c.url, target: '_blank', rel: 'noopener' }, c.label)])) : null)
+      : h('section', null, look),
+    h('section', { class: 'ln-ex-sec' },
+      h('div', { class: 'lbl' }, `Exercises · ${p.d} of ${p.n} done`),
+      u.expect ? h('aside', { class: 'ln-expect' }, h('b', null, 'Struggling is normal'), h('p', null, u.expect)) : null,
       h('ol', { class: 'ln-exs' }, ...u.ex.map(e => {
         const done = lnIsDone(e.id);
         const cb = h('input', { type: 'checkbox', 'aria-label': `Mark “${e.title}” done` });
         cb.checked = done; cb.addEventListener('change', () => lnSetDone(e.id, cb.checked));
         return h('li', { class: 'ln-ex' + (done ? ' done' : '') }, cb,
-          h('div', null, h('b', null, e.title), h('span', { class: 'how' }, e.how), h('span', { class: 'meta' }, exMeta(e))),
+          h('div', null, h('b', null, e.title), h('span', { class: 'how' }, e.how),
+            e.steps ? list('ol', 'ln-ex-steps', e.steps) : null,
+            h('span', { class: 'meta' }, exMeta(e))),
           h('button', { type: 'button', class: 'btn' + (done ? '' : ' primary'), onclick: () => lnStart(e) }, icon('play'), done ? 'Again' : 'Start'));
       }))),
     sets.length ? h('section', { class: 'ln-refs' }, h('div', { class: 'lbl' }, 'References in this unit'), ...sets.map(sid => {
@@ -2803,7 +2817,8 @@ function renderUnit(u) {
     })) : null,
     h('nav', { class: 'ln-nav' },
       prev ? h('button', { type: 'button', class: 'btn', onclick: () => { location.hash = '#learn/' + prev.id; } }, '← ' + unitLabel(prev)) : h('span'),
-      next ? h('button', { type: 'button', class: 'btn', onclick: () => { location.hash = '#learn/' + next.id; } }, unitLabel(next) + ' →') : h('span')));
+      next ? h('button', { type: 'button', class: 'btn', onclick: () => { location.hash = '#learn/' + next.id; } }, unitLabel(next) + ' →') : h('span'))
+  ].filter(Boolean));
 }
 
 /* ============ routing + render ============ */

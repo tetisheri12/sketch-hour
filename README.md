@@ -113,6 +113,7 @@ python3 tools/build_curriculum.py
 ```
 
 - **Tracks, units and exercises** are written out in `tools/build_curriculum.py` (`TRACKS` and the suggested order in `PATH`). Each exercise is a timed session (`S`), a session from one of your boards (`B`), a study with the timer (`STUDY`), a Studio exercise (`STUDIO`) or a timer with no reference (`FREE`).
+- **Lesson text** for each unit page is in `GUIDE`: why the unit matters, the numbered method, common mistakes and what to expect. Units that use a method from [Drawabox](https://drawabox.com/) credit it with links (`credit`); write the text in our own words. An exercise can also have its own `steps`. Keep exercise order when adding exercises (add new ones at the end), because progress is saved by exercise ID (`per-1a`, `per-1b`…).
 - **Museum references** are listed in `tools/museum.json` by Art Institute of Chicago artwork and image IDs. They're public-domain works the museum releases as CC0, and they load from the museum's image server, so they don't take space in the repository.
 - **Rendered references** are in `app/refs/` (about 4 MB). To change or add some, edit `tools/refs/poses.js` or `tools/refs/jobs-all.js`, then run `cd tools/refs && npm install && npx playwright install chromium && npm run render`, and rebuild the curriculum.
 - The same command updates the `/curriculum/` web page (the part between the `generated:curriculum` comments).
