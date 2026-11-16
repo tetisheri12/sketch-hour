@@ -14,7 +14,7 @@
   --hand-r:255px 18px 225px 18px/18px 225px 18px 255px;--hand-r2:18px 225px 18px 255px/255px 18px 225px 18px;
   --tooth:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .32 0 0 0 0 .27 0 0 0 0 .2 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
   --fibres:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .25' numOctaves='2' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .25 0 0 0 0 .14 0 0 0 .9 -.35'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
-  margin:0;background:var(--desk) var(--tooth);color:var(--ink);font:400 1rem/1.65 var(--text);color-scheme:light;-webkit-font-smoothing:antialiased
+  margin:0;background:var(--paper) var(--tooth);color:var(--ink);font:400 1rem/1.65 var(--text);color-scheme:light;-webkit-font-smoothing:antialiased
 }
 .sk2 *,.sk2 *::before,.sk2 *::after{box-sizing:border-box}
 :where(.sk2) :is(h1,h2,h3,p,ul,ol,figure){margin:0}
@@ -23,11 +23,9 @@
 :where(.sk2) a{color:inherit}
 a:focus-visible,button:focus-visible{outline:3px solid #6b7fb3;outline-offset:3px}
 
-/* the sketchbook page: drawing paper with a gutter shadow on the left and the edges of the pages under it */
-.page{position:relative;max-width:1240px;margin:28px auto 56px;background:var(--paper) var(--tooth);box-shadow:3px 4px 0 #ece6da,6px 8px 0 #e2dbce,9px 12px 0 #d6cebf,0 30px 60px rgba(40,30,15,.22);overflow:clip}
-.page::before{content:"";position:absolute;left:0;top:0;bottom:0;width:70px;background:linear-gradient(90deg,rgba(60,45,25,.16),rgba(60,45,25,.05) 35%,transparent);pointer-events:none;z-index:1}
+/* the page: plain cream drawing paper, edge to edge */
+.page{position:relative;max-width:1240px;margin:0 auto;padding-bottom:24px;overflow-x:clip}
 .in{padding-inline:clamp(28px,6vw,84px) clamp(22px,5vw,64px)}
-@media (max-width:759.98px){.page{margin:0;box-shadow:none}.page::before{width:26px}}
 
 .hand{font-family:var(--hand);font-weight:700;line-height:1.12}
 .pen{color:var(--pen)}
