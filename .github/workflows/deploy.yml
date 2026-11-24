@@ -8,21 +8,21 @@ on:
     - cron: "23 3 * * *"
   workflow_dispatch:
 
+# actions: read lets the deploy step find the site package the build job uploaded
 permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  # Build the site and upload it as one package
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
 
@@ -30,7 +30,7 @@ jobs:
         run: node --version
 
       - id: pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Sync Pinterest boards from boards.json
         run: node scripts/sync-boards.js --previous "${{ steps.pages.outputs.base_url }}/data/boards.json"
@@ -38,9 +38,27 @@ jobs:
       - name: Point links at the site's base path
         run: node scripts/prefix-base.js app "${{ steps.pages.outputs.base_path }}"
 
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: app
 
+  # Publish the package. A separate job, so the package is complete before the deploy looks for it.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url || steps.retry.outputs.page_url }}
+    steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+
+      # GitHub sometimes can't see a package that was uploaded seconds earlier; wait and try once more
+      - name: Wait before trying again
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 60
+
+      - id: retry
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v5
