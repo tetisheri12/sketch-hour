@@ -36,6 +36,7 @@
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15.5V4M7 9l5-5 5 5"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></symbol>
   <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="7.5"/><path d="M12 13V9.5M9.5 2.5h5"/></symbol>
+  <symbol id="i-wheel" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.6"/><path d="M12 3.5v6M12 14.6v5.9M3.5 12h6M14.6 12h5.9M6 6l4.2 4.2M13.8 13.8 18 18M18 6l-4.2 4.2M10.2 13.8 6 18"/></symbol>
   <symbol id="i-values" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 15c4-1 6-6 10-8 2-1 4-1 6-1v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" fill="currentColor"/></symbol>
   <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="1.5" fill="currentColor" stroke="none"/></symbol>
   <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
@@ -369,10 +370,18 @@
           <label class="st-range"><span>Squint</span><input type="range" id="stBlur" min="0" max="100" value="0"><span id="stBlurV">0</span></label>
           <p class="st-vnote">These only change how the reference looks here. Your references stay as they are.</p>
         </div>
+        <div class="st-colors" id="stColors" hidden>
+          <div class="st-vhead"><b>Colors</b><span class="st-row"><button type="button" class="linkish" id="stHueClear" hidden>Show all</button><button type="button" class="ib sm" id="stColorsClose" aria-label="Close colors"><svg class="i"><use href="#i-close"/></svg></button></span></div>
+          <div class="st-wheel" id="stWheel"></div>
+          <p class="st-scheme" id="stScheme" aria-live="polite"></p>
+          <div class="st-hueinfo" id="stHueInfo" aria-live="polite"></div>
+          <p class="st-vnote">Click a slice to see where that color sits in the picture. The middle holds the grays.</p>
+        </div>
         <div class="st-tools" id="stTools" hidden>
           <button type="button" class="ib" id="stGrayBtn" aria-pressed="false" aria-label="Grayscale (G)" title="Grayscale (G)"><svg class="i"><use href="#i-gray"/></svg></button>
           <button type="button" class="ib" id="stMirrorBtn" aria-pressed="false" aria-label="Mirror (F)" title="Mirror (F)"><svg class="i"><use href="#i-flip"/></svg></button>
           <button type="button" class="ib txt" id="stValuesBtn" aria-pressed="false" aria-expanded="false" aria-controls="stValues"><svg class="i"><use href="#i-values"/></svg><span>Values</span></button>
+          <button type="button" class="ib txt" id="stColorsBtn" aria-pressed="false" aria-expanded="false" aria-controls="stColors"><svg class="i"><use href="#i-wheel"/></svg><span>Colors</span></button>
         </div>
       </div>
 

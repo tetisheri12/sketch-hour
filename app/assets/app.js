@@ -1714,7 +1714,7 @@ const ST = Object.assign({
   view: 'lines', opacity: 0.9, strength: 50, lineColor: 'red', refFade: 1,
   peek: false, flicker: false, flickOn: true, align: null, corners: null,
   L: null, drag: null,
-  look: { gray: false, mirror: false, steps: 0, split: 0, bright: 0, contrast: 0, blur: 0 }, lookBlocked: false, refVer: 0, cropVer: 0
+  look: { gray: false, mirror: false, steps: 0, split: 0, bright: 0, contrast: 0, blur: 0, hue: null }, lookBlocked: false, refVer: 0, cropVer: 0
 }, (() => {
   const s = LS.get('sketchhour.studio', {});
   const keep = {};
@@ -1739,7 +1739,7 @@ async function stLoadRef(src, name, remote) {
   if (!img || !img.naturalWidth) { toast("That image couldn't be opened. Try a JPG, PNG or WebP."); return; }
   ST.ref = { img, w: img.naturalWidth, h: img.naturalHeight, clean };
   ST.refName = (name || 'Reference').slice(0, 80);
-  ST.refVer++; ST.lookBlocked = false;
+  ST.refVer++; ST.lookBlocked = false; ST.look.hue = null;
   ST.fixed = false; ST.crop = null; ST.align = null; ST.corners = null;
   ST.ratio = 'orig'; ST.landscape = ST.ref.w > ST.ref.h;
   ST.frame = { x: 0, y: 0, w: ST.ref.w, h: ST.ref.h };
@@ -1921,7 +1921,7 @@ function stCmpRef() {
 
 /* ---------- values: grayscale, value groups, brightness, contrast, squint ---------- */
 const stLookCache = new Map();
-function stLookActive() { const l = ST.look; return !!(l.gray || l.steps || l.bright || l.contrast || l.blur); }
+function stLookActive() { const l = ST.look; return !!(l.gray || l.steps || l.bright || l.contrast || l.blur || l.hue != null); }
 function stDispLong() {
   const st = $('#stStage'), dpr = Math.min(2, window.devicePixelRatio || 1);
   return Math.min(2000, Math.ceil(Math.max(st.clientWidth, st.clientHeight) * dpr / 200) * 200 || 1600);
@@ -1951,7 +1951,7 @@ function stBoxBlur(d, w, hh, r) {
 /* Returns the source drawn with the current value settings, at most maxLong pixels on its long side. */
 function stLookSrc(src, w, hh, tag, maxLong) {
   if (!stLookActive() || ST.lookBlocked) return src;
-  const l = ST.look, key = [tag, maxLong, l.gray, l.steps, l.split, l.bright, l.contrast, l.blur].join('|');
+  const l = ST.look, key = [tag, maxLong, l.gray, l.steps, l.split, l.bright, l.contrast, l.blur, l.hue].join('|');
   if (stLookCache.has(key)) return stLookCache.get(key);
   const k = Math.min(1, maxLong / Math.max(w, hh)), cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(hh * k));
   const c = stCanvas(cw, ch), x = c.getContext('2d', { willReadFrequently: true });
@@ -1967,7 +1967,8 @@ function stLookSrc(src, w, hh, tag, maxLong) {
   if (l.blur > 0) { const r = Math.max(1, Math.round(l.blur / 100 * 0.022 * Math.max(cw, ch))); stBoxBlur(d, cw, ch, r); stBoxBlur(d, cw, ch, r); }
   const cf = l.contrast >= 0 ? 1 + l.contrast / 25 : 1 + l.contrast / 62.5, bo = l.bright * 1.3;
   const adj = v => (v - 128) * cf + 128 + bo;
-  const N = l.steps, tones = { 2: [24, 236], 3: [24, 128, 236], 5: [18, 70, 128, 186, 242] }[N];
+  // a picked color slice keeps its color and grays out the rest; it takes over from grayscale and value groups
+  const sel = l.hue, N = sel != null ? 0 : l.steps, tones = { 2: [24, 236], 3: [24, 128, 236], 5: [18, 70, 128, 186, 242] }[N];
   let lo = 0, hi = 255;
   if (tones) {
     const hist = new Uint32Array(256), n = cw * ch;
@@ -1976,10 +1977,13 @@ function stLookSrc(src, w, hh, tag, maxLong) {
     for (let i = 0; i < 256; i++) { acc += hist[i]; if (lo < 0 && acc >= n * 0.01) lo = i; if (acc >= n * 0.99) { hi = i; break; } }
     if (hi - lo < 8) { lo = 0; hi = 255; }
   }
-  const gray = l.gray || !!tones, sh = l.split / 100;
+  const gray = (l.gray || !!tones) && sel == null, sh = l.split / 100;
   for (let i = 0; i < d.length; i += 4) {
     let r = adj(d[i]), g = adj(d[i + 1]), b = adj(d[i + 2]);
-    if (gray) {
+    if (sel != null && stHueKey(stHueOf(d[i], d[i + 1], d[i + 2])) !== sel) {
+      const v = (0.2126 * r + 0.7152 * g + 0.0722 * b) * 0.45 + 70;
+      r = g = b = v;
+    } else if (gray) {
       let v = 0.2126 * r + 0.7152 * g + 0.0722 * b;
       if (tones) { let t = Math.floor(((v - lo) / (hi - lo) - sh) * N); v = tones[t < 0 ? 0 : t >= N ? N - 1 : t]; }
       r = g = b = v;
@@ -1991,6 +1995,173 @@ function stLookSrc(src, w, hh, tag, maxLong) {
   while (stLookCache.size > 4) stLookCache.delete(stLookCache.keys().next().value);
   return c;
 }
+/* ---------- colors: a painter's color wheel of the reference ----------
+   Hues sit on the painter's wheel (red, yellow and blue as primaries), so opposite colors are the ones painters
+   expect: red and green, orange and blue, yellow and violet. Each slice is painted with the picture's own average
+   color for that hue, sized by how much of the picture uses it; grays and near-blacks sit in the middle. */
+const ST_HUES = ['Red', 'Red-orange', 'Orange', 'Yellow-orange', 'Yellow', 'Yellow-green', 'Green', 'Blue-green', 'Blue', 'Blue-violet', 'Violet', 'Red-violet'];
+const ST_WARMTH = [1, 1, 1, 1, 1, 0.5, 0, 0, 0, 0, 0, 0.5]; // share of each slice that counts as warm
+// screen hue (HSV degrees) to painter's wheel degrees, by matching anchor colors
+const ST_RYB = [[0, 0], [30, 60], [60, 120], [120, 180], [180, 210], [240, 240], [280, 300], [320, 330], [360, 360]];
+function stRybDeg(h) {
+  for (let i = 1; i < ST_RYB.length; i++) { const [a, A] = ST_RYB[i - 1], [b, B] = ST_RYB[i]; if (h <= b) return A + (h - a) / (b - a) * (B - A); }
+  return 0;
+}
+function stRgbDeg(ryb) { // the way back, for the reference ring
+  for (let i = 1; i < ST_RYB.length; i++) { const [a, A] = ST_RYB[i - 1], [b, B] = ST_RYB[i]; if (ryb <= B) return a + (ryb - A) / (B - A) * (b - a); }
+  return 0;
+}
+// slice of every color, looked up from a 32 x 32 x 32 table: -1 = gray, 0-11 = hue slice; +12 marks a strong color
+let stHueLut = null;
+function stHueTable() {
+  if (stHueLut) return stHueLut;
+  const t = new Int8Array(32768);
+  for (let r = 0; r < 32; r++) for (let g = 0; g < 32; g++) for (let b = 0; b < 32; b++) {
+    const R = r * 8 + 4, G = g * 8 + 4, B = b * 8 + 4, mx = Math.max(R, G, B), mn = Math.min(R, G, B), c = (mx - mn) / 255;
+    let v = -1;
+    if (c >= 0.08 && mx >= 40) {
+      let h = mx === R ? (G - B) / (mx - mn) : mx === G ? 2 + (B - R) / (mx - mn) : 4 + (R - G) / (mx - mn);
+      h = ((h * 60) % 360 + 360) % 360;
+      v = Math.round(stRybDeg(h) / 30) % 12 + (c >= 0.32 ? 12 : 0);
+    }
+    t[(r << 10) | (g << 5) | b] = v;
+  }
+  return (stHueLut = t);
+}
+const stHueOf = (r, g, b) => stHueTable()[((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3)];
+const stHueKey = v => v < 0 ? 'n' : v % 12;
+
+const stColorCache = new Map();
+function stColorStats() {
+  const ref = stCmpRef(); if (!ref) return null;
+  if (stColorCache.has(ref.tag)) return stColorCache.get(ref.tag);
+  const k = Math.min(1, 180 / Math.max(ref.w, ref.h)), cw = Math.max(1, Math.round(ref.w * k)), ch = Math.max(1, Math.round(ref.h * k));
+  const c = stCanvas(cw, ch), x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(ref.img, 0, 0, cw, ch);
+  let d;
+  try { d = x.getImageData(0, 0, cw, ch).data; } catch { const out = { blocked: true }; stColorCache.set(ref.tag, out); return out; }
+  const slot = () => ({ n: 0, r: 0, g: 0, b: 0, l: 0 });
+  const hues = ST_HUES.map(() => ({ muted: slot(), strong: slot() })), gray = slot();
+  let total = 0, lum = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] < 128) continue;
+    const r = d[i], g = d[i + 1], b = d[i + 2], v = stHueOf(r, g, b), l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    const s = v < 0 ? gray : v >= 12 ? hues[v - 12].strong : hues[v].muted;
+    s.n++; s.r += r; s.g += g; s.b += b; s.l += l; total++; lum += l;
+  }
+  const avg = s => s.n ? `rgb(${Math.round(s.r / s.n)},${Math.round(s.g / s.n)},${Math.round(s.b / s.n)})` : null;
+  const list = hues.map((hh, i) => {
+    const n = hh.muted.n + hh.strong.n;
+    return { i, name: ST_HUES[i], n, share: total ? n / total : 0, strong: n ? hh.strong.n / n : 0, muted: avg(hh.muted), bright: avg(hh.strong), l: n ? (hh.muted.l + hh.strong.l) / n : 0 };
+  });
+  const out = { total, avgL: total ? lum / total : 128, hues: list, gray: { n: gray.n, share: total ? gray.n / total : 0, color: avg(gray) || '#777', l: gray.n ? gray.l / gray.n : 0 } };
+  out.scheme = stScheme(out);
+  stColorCache.set(ref.tag, out);
+  while (stColorCache.size > 6) stColorCache.delete(stColorCache.keys().next().value);
+  return out;
+}
+/* Names the color scheme from how the colored part of the picture spreads around the wheel. */
+function stScheme(s) {
+  const w = s.hues.map(hh => hh.n * (1 + hh.strong)), tot = w.reduce((a, b) => a + b, 0);
+  const colored = 1 - s.gray.share, pct = v => Math.round(v * 100) + '%';
+  const at = i => w[((i % 12) + 12) % 12] / (tot || 1), near = (i, r) => { let v = 0; for (let k = -r; k <= r; k++) v += at(i + k); return v; };
+  const main = w.indexOf(Math.max(...w)), name = i => ST_HUES[((i % 12) + 12) % 12];
+  let warm = 0; s.hues.forEach((hh, i) => { warm += w[i] * ST_WARMTH[i]; });
+  warm = tot ? warm / tot : 0.5;
+  const temp = tot ? (warm >= 0.6 ? `Mostly warm: ${pct(warm)} of the color is warm.` : warm <= 0.4 ? `Mostly cool: ${pct(1 - warm)} of the color is cool.` : `Warm and cool in balance (${pct(warm)} warm).`) : '';
+  if (!tot || colored < 0.08) return { title: 'Almost no color', note: `Only ${pct(colored)} of the picture has a clear hue. It works through light and dark.`, hues: tot ? [main] : [], temp };
+  let r;
+  if (at(main) >= 0.75) r = { title: `One color family: ${name(main).toLowerCase()}`, note: 'Almost everything is one hue, lighter and darker, stronger and grayer. The picture holds together through value.', hues: [main] };
+  else if (near(main, 1) >= 0.8 || near(main, 2) >= 0.78) {
+    const fam = [-2, -1, 0, 1, 2].filter(k => k === 0 || at(main + k) >= 0.06).map(k => main + k);
+    const names = fam.map(i => name(i).toLowerCase()), list = names.length > 2 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names.join(' and ');
+    r = { title: `Neighboring colors: ${list}`, note: 'Hues that sit next to each other on the wheel. It feels calm and unified, so the contrast has to come from value.', hues: fam };
+  } else if (near(main + 6, 1) >= 0.1) {
+    const opp = [5, 6, 7].map(k => [k, at(main + k)]).sort((a, b) => b[1] - a[1]);
+    if (opp[0][0] !== 6 && at(main + 5) >= 0.04 && at(main + 7) >= 0.04)
+      r = { title: `Split opposites: ${name(main).toLowerCase()} against ${name(main + 5).toLowerCase()} and ${name(main + 7).toLowerCase()}`, note: 'One hue set against the two neighbors of its opposite. Strong contrast, a little softer than a straight opposite.', hues: [main, main + 5, main + 7] };
+    else r = { title: `Opposite colors: ${name(main).toLowerCase()} and ${name(main + opp[0][0]).toLowerCase()}`, note: `Two hues from opposite sides of the wheel make each other look stronger. Here ${name(main).toLowerCase()} leads and ${name(main + opp[0][0]).toLowerCase()} is the accent.`, hues: [main, main + opp[0][0]] };
+  } else if (near(main + 4, 1) >= 0.08 && near(main + 8, 1) >= 0.08)
+    r = { title: `Three evenly spaced: ${name(main).toLowerCase()}, ${name(main + 4).toLowerCase()} and ${name(main + 8).toLowerCase()}`, note: 'Three hues spread around the wheel. Lively; one usually leads and the other two support it.', hues: [main, main + 4, main + 8] };
+  else r = { title: 'Mixed colors', note: 'Hues from around the wheel without one clear scheme. Squint and see which one leads.', hues: [main] };
+  r.hues = r.hues.map(i => ((i % 12) + 12) % 12);
+  r.temp = temp;
+  return r;
+}
+function stPetal(cx, cy, r0, r1, a0, a1) {
+  const p = (r, a) => [cx + r * Math.cos(a), cy + r * Math.sin(a)].map(v => v.toFixed(1)).join(' ');
+  const big = a1 - a0 > Math.PI ? 1 : 0;
+  return `M${p(r0, a0)} L${p(r1, a0)} A${r1} ${r1} 0 ${big} 1 ${p(r1, a1)} L${p(r0, a1)} A${r0} ${r0} 0 ${big} 0 ${p(r0, a0)} Z`;
+}
+function stValueWord(l, avg) { return l > avg + 25 ? 'lighter than most of the picture' : l < avg - 25 ? 'darker than most of the picture' : 'about the middle value of the picture'; }
+function stRenderColors() {
+  const box = $('#stWheel'), s = stColorStats();
+  if (!s) { box.replaceChildren(); return; }
+  if (s.blocked) {
+    box.replaceChildren(h('p', { class: 'st-vnote' }, "Pinterest doesn't let this pin's colors be read here. Copy the pin into one of your boards to use the color wheel."));
+    $('#stScheme').textContent = ''; $('#stHueInfo').replaceChildren(); $('#stHueClear').hidden = true;
+    return;
+  }
+  const sel = ST.look.hue, NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg');
+  const el = (tag, attrs, ...kids) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); n.append(...kids); return n; };
+  const C = 130, R0 = 34, R1 = 42, RMAX = 112, maxShare = Math.max(...s.hues.map(x => x.share), 0.0001);
+  svg.setAttribute('viewBox', '0 0 260 260'); svg.setAttribute('role', 'group'); svg.setAttribute('aria-label', 'Color wheel of the reference');
+  // a hand-painted edge, like a watercolor swatch
+  svg.append(el('defs', {}, el('filter', { id: 'stPaintEdge', x: '-10%', y: '-10%', width: '120%', height: '120%' },
+    el('feTurbulence', { type: 'fractalNoise', baseFrequency: '0.05', numOctaves: '2', seed: '7' }),
+    el('feDisplacementMap', { in: 'SourceGraphic', scale: '4' }))));
+  const ang = deg => (deg - 90) * Math.PI / 180;
+  // the reference ring: the painter's wheel itself, thin, on the outside
+  for (let i = 0; i < 12; i++) {
+    const hue = stRgbDeg(i * 30) % 360;
+    svg.append(el('path', { d: stPetal(C, C, RMAX + 6, RMAX + 14, ang(i * 30 - 15), ang(i * 30 + 15)), fill: `hsl(${hue.toFixed(0)} 62% 56%)`, class: 'guide' }));
+  }
+  const pick = v => { ST.look.hue = ST.look.hue === v ? null : v; stRender(); };
+  const slice = (v, label, ...shapes) => {
+    const g = el('g', { class: 'slice' + (sel === v ? ' sel' : sel != null ? ' dim' : ''), tabindex: '0', role: 'button', 'aria-pressed': String(sel === v), 'aria-label': label }, ...shapes);
+    g.addEventListener('click', () => pick(v));
+    g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(v); } });
+    return g;
+  };
+  const paint = el('g', { filter: 'url(#stPaintEdge)' });
+  for (const hh of s.hues) {
+    const a0 = ang(hh.i * 30 - 13.5), a1 = ang(hh.i * 30 + 13.5), pct = Math.round(hh.share * 100);
+    const len = hh.n ? Math.max(5, (RMAX - R1) * Math.sqrt(hh.share / maxShare)) : 0, rm = R1 + len * (1 - hh.strong);
+    const shapes = [el('path', { class: 'hit', d: stPetal(C, C, R1, RMAX, a0, a1) })];
+    if (hh.n && hh.strong < 1) shapes.push(el('path', { d: stPetal(C, C, R1, rm, a0, a1), fill: hh.muted }));
+    if (hh.n && hh.strong > 0) shapes.push(el('path', { d: stPetal(C, C, rm, R1 + len, a0, a1), fill: hh.bright }));
+    paint.append(slice(hh.i, `${hh.name}, ${pct < 1 && hh.n ? 'under 1' : pct}% of the picture`, ...shapes));
+  }
+  svg.append(paint);
+  svg.append(slice('n', `Grays, ${Math.round(s.gray.share * 100)}% of the picture`,
+    el('circle', { class: 'hit', cx: C, cy: C, r: R0 + 4 }),
+    el('circle', { cx: C, cy: C, r: R0, fill: s.gray.color, filter: 'url(#stPaintEdge)' }),
+    el('text', { class: 'mid-label', x: C, y: C + 4, 'text-anchor': 'middle', fill: s.gray.l > 140 ? '#1c1c1c' : '#f4f4f4', style: `fill:${s.gray.l > 140 ? '#1c1c1c' : '#f4f4f4'}` }, Math.round(s.gray.share * 100) + '%')));
+  // the scheme, drawn from the middle out to its hues
+  for (const i of s.scheme.hues) {
+    const a = ang(i * 30);
+    svg.append(el('line', { class: 'scheme-line', x1: C + (R0 + 2) * Math.cos(a), y1: C + (R0 + 2) * Math.sin(a), x2: C + (RMAX + 4) * Math.cos(a), y2: C + (RMAX + 4) * Math.sin(a) }));
+  }
+  box.replaceChildren(svg);
+  $('#stScheme').replaceChildren(h('b', null, s.scheme.title), s.scheme.note + (s.scheme.temp ? ' ' + s.scheme.temp : ''));
+  // what's selected, or the main colors to pick from
+  const info = $('#stHueInfo'), pctTxt = v => (v > 0 && v < 0.01 ? 'under 1' : Math.round(v * 100)) + '%';
+  $('#stHueClear').hidden = sel == null;
+  if (sel === 'n') {
+    info.replaceChildren(h('p', null, h('span', { class: 'st-sw', style: `background:${s.gray.color}` }), h('b', null, 'Grays and near-blacks'), ` · ${pctTxt(s.gray.share)} of the picture, ${stValueWord(s.gray.l, s.avgL)}.`),
+      h('p', { class: 'muted' }, 'Everything with color is grayed out. What’s left is the picture without a clear hue.'));
+  } else if (sel != null) {
+    const hh = s.hues[sel], opp = s.hues[(sel + 6) % 12];
+    info.replaceChildren(
+      h('p', null, h('span', { class: 'st-sw', style: `background:${hh.bright || hh.muted || 'transparent'}` }), h('b', null, hh.name), ` · ${pctTxt(hh.share)} of the picture` + (hh.n ? `, ${hh.strong >= 0.6 ? 'mostly strong' : hh.strong <= 0.25 ? 'mostly grayed' : 'some strong, some grayed'}, ${stValueWord(hh.l, s.avgL)}.` : '. None of it here.')),
+      h('p', { class: 'muted' }, `${ST_WARMTH[sel] === 1 ? 'A warm hue.' : ST_WARMTH[sel] === 0 ? 'A cool hue.' : 'Between warm and cool.'} Its opposite is ${opp.name.toLowerCase()} (${pctTxt(opp.share)} of the picture).`));
+  } else {
+    const top = [...s.hues].filter(x => x.share >= 0.01).sort((a, b) => b.share - a.share).slice(0, 4);
+    info.replaceChildren(top.length ? h('div', { class: 'chips' }, ...top.map(x => h('button', { type: 'button', class: 'chip', 'aria-pressed': 'false', onclick: () => pick(x.i) },
+      h('span', { class: 'st-sw', style: `background:${x.bright || x.muted}` }), `${x.name} ${pctTxt(x.share)}`))) : '');
+  }
+}
+
 function stFitSketch() {
   const ref = stCmpRef(), sk = ST.sketch;
   if (!ref || !sk) return;
@@ -2334,12 +2505,15 @@ function stRender() {
     $('#stFlicker').checked = ST.flicker;
   }
   $('#stTools').hidden = !has;
-  if (!has) $('#stValues').hidden = true;
+  if (!has) { $('#stValues').hidden = true; $('#stColors').hidden = true; }
   const lk = ST.look;
   $('#stGrayBtn').setAttribute('aria-pressed', String(lk.gray));
   $('#stMirrorBtn').setAttribute('aria-pressed', String(lk.mirror));
   $('#stValuesBtn').setAttribute('aria-pressed', String(!$('#stValues').hidden || lk.steps > 0 || !!lk.bright || !!lk.contrast || !!lk.blur));
   $('#stValuesBtn').setAttribute('aria-expanded', String(!$('#stValues').hidden));
+  $('#stColorsBtn').setAttribute('aria-pressed', String(!$('#stColors').hidden || lk.hue != null));
+  $('#stColorsBtn').setAttribute('aria-expanded', String(!$('#stColors').hidden));
+  if (has && !$('#stColors').hidden) stRenderColors();
   $$('#stStepsSeg button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.s) === lk.steps)));
   $('#stSplitRow').hidden = !lk.steps;
   for (const [id, key] of [['stSplit', 'split'], ['stBright', 'bright'], ['stContrast', 'contrast'], ['stBlur', 'blur']]) {
@@ -2571,8 +2745,11 @@ function stBindStudio() {
   });
   $('#stGrayBtn').addEventListener('click', () => { ST.look.gray = !ST.look.gray; stRender(); });
   $('#stMirrorBtn').addEventListener('click', () => { ST.look.mirror = !ST.look.mirror; stRender(); });
-  $('#stValuesBtn').addEventListener('click', () => { $('#stValues').hidden = !$('#stValues').hidden; stRender(); });
+  $('#stValuesBtn').addEventListener('click', () => { $('#stValues').hidden = !$('#stValues').hidden; if (!$('#stValues').hidden) $('#stColors').hidden = true; stRender(); });
   $('#stValuesClose').addEventListener('click', () => { $('#stValues').hidden = true; stRender(); });
+  $('#stColorsBtn').addEventListener('click', () => { $('#stColors').hidden = !$('#stColors').hidden; if (!$('#stColors').hidden) $('#stValues').hidden = true; stRender(); });
+  $('#stColorsClose').addEventListener('click', () => { $('#stColors').hidden = true; ST.look.hue = null; stRender(); });
+  $('#stHueClear').addEventListener('click', () => { ST.look.hue = null; stRender(); });
   $$('#stStepsSeg button').forEach(b => b.addEventListener('click', () => { ST.look.steps = Number(b.dataset.s); stRender(); }));
   let lookT = 0;
   for (const [id, key] of [['stSplit', 'split'], ['stBright', 'bright'], ['stContrast', 'contrast'], ['stBlur', 'blur']]) {
@@ -2581,7 +2758,7 @@ function stBindStudio() {
       clearTimeout(lookT); lookT = setTimeout(stDraw, 60);
     });
   }
-  $('#stLookReset').addEventListener('click', () => { Object.assign(ST.look, { gray: false, steps: 0, split: 0, bright: 0, contrast: 0, blur: 0 }); stRender(); });
+  $('#stLookReset').addEventListener('click', () => { Object.assign(ST.look, { gray: false, steps: 0, split: 0, bright: 0, contrast: 0, blur: 0, hue: null }); stRender(); });
   $('#stCmpDownload').addEventListener('click', () => stDownload(stCompareExport(), 'sketch-check.jpg'));
   $('#stSketchClear').addEventListener('click', () => { ST.sketch = ST.sketchOrig = null; ST.layers = null; ST.corners = ST.align = null; stRender(); });
   document.addEventListener('keyup', e => { if (e.code === 'Space' && ST.peek && S.view === 'studio') peek(false); });
@@ -2669,7 +2846,7 @@ function exMeta(e) {
   if (e.t === 'session') { const m = e.plan.reduce((a, [n, d]) => a + n * d, 0) / 60; return `${CUR.data.sets[e.set].name} · ${planText(e.plan)} · ${minsTxt(m * 60)} min${e.gray ? ' · grayscale' : ''}`; }
   if (e.t === 'board') { const m = e.plan.reduce((a, [n, d]) => a + n * d, 0) / 60; return `Your ${boardName(e.board)} board · ${planText(e.plan)} · ${minsTxt(m * 60)} min`; }
   if (e.t === 'study') return `${CUR.data.sets[e.set].name} · one reference · ${e.min} min study timer`;
-  if (e.t === 'studio') return `Studio · ${CUR.data.sets[e.set].name} · ${e.min} min${e.values ? ` · ${e.values} values` : ''}`;
+  if (e.t === 'studio') return `Studio · ${CUR.data.sets[e.set].name} · ${e.min} min${e.values ? ` · ${e.values} values` : ''}${e.colors ? ' · color wheel' : ''}`;
   return `Timer · ${e.min} min · no reference`;
 }
 function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
@@ -2692,8 +2869,9 @@ async function lnStart(e) {
     await stLoadRef(srcOf(r), r.note, !!r.remote);
     ST.learn = learn; ST.drawDur = e.min * 60;
     if (e.values) { ST.look.steps = e.values; if ($('#stValues').hidden) $('#stValuesBtn').click(); }
+    if (e.colors && $('#stColors').hidden) $('#stColorsBtn').click();
     stRender(); renderTimer();
-    toast(e.values ? `Values are set to ${e.values}. Find the composition, fix it, then press Start drawing.` : 'Find the composition, fix it, then press Start drawing.');
+    toast(e.values ? `Values are set to ${e.values}. Find the composition, fix it, then press Start drawing.` : e.colors ? 'The color wheel is open. Find the scheme, fix the composition, then press Start drawing.' : 'Find the composition, fix it, then press Start drawing.');
   } else {
     tSet(e.min * 60, label, learn); location.hash = '#timer'; tToggle();
   }
