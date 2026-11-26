@@ -519,3 +519,8 @@ input[type="range"]{width:100%;accent-color:var(--primary)}
 @media (max-width:420px){.top-act{gap:2px}.top-act .theme-tg{width:34px;height:34px}.site .top-act .site-cta{padding-inline:12px;font-size:.8125rem}}
 .top-act .site-cta{white-space:nowrap}
 @media (max-width:359.98px){.site .brand span{display:none}}
+/* Upload photos under "Draw from" on the Practice tab */
+.src-add{display:flex;align-items:center;flex-wrap:wrap;gap:var(--s2) var(--s3);margin-top:var(--s3)}
+.src-add .btn{cursor:pointer}
+#v-practice .setup.over{outline:2px dashed var(--link);outline-offset:4px}
+#startHint .linkish{font-size:inherit}

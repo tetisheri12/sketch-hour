@@ -456,6 +456,7 @@ async function prepareMedia(file) {
 }
 const kindOf = t => (t === 'image/gif' ? 'gif' : /^video\//.test(t) ? 'video' : 'image');
 let addQ = Promise.resolve();
+function pracTarget() { return CFG.boards.find(id => !pinBoardOf(id)) || 'poses'; }
 function addFiles(files, o) {
   o = o || {};
   const list = Array.from(files || []).filter(f => /^image\//.test(f.type) || /^video\/(mp4|webm)$/.test(f.type));
@@ -556,6 +557,7 @@ function renderPractice() {
       }
     }, b.name, h('span', { class: 'ct' }, n ? String(n) : smp ? `${smp} samples` : '0'));
   }));
+  $('#srcAddNote').textContent = `Photos, GIFs or short clips. They go into ${boardName(pracTarget())}.`;
   $$('#modeSeg button').forEach(bt => bt.setAttribute('aria-pressed', String(bt.dataset.mode === CFG.mode)));
   $('#fixedOpts').hidden = CFG.mode !== 'fixed';
   $('#classOpts').hidden = CFG.mode !== 'class';
@@ -597,8 +599,9 @@ function renderPractice() {
   let hint = '';
   if (!avail) hint = S.samplesReady ? 'These boards are empty. Add references in Library or Sources.' : 'Preparing sample references…';
   else if (avail < poses) hint = `References repeat after ${avail}.`;
-  else if (usingSamples) hint = 'Using sample mannequins until you add your own.';
-  $('#startHint').textContent = hint;
+  else if (usingSamples) hint = 'Using sample mannequins until you ';
+  if (usingSamples && avail && avail >= poses) $('#startHint').replaceChildren(hint, h('label', { class: 'linkish', for: 'pracFileIn' }, 'add your own photos'), '.');
+  else $('#startHint').textContent = hint;
   $('#startBtn').disabled = !avail;
 }
 
@@ -3033,6 +3036,25 @@ function bind() {
   $$('#lnModeSeg button').forEach(b => b.addEventListener('click', () => { LN.mode = b.dataset.m; LS.set('sketchhour.learnMode', LN.mode); renderLearn(); }));
   // library
   $('#fileIn').addEventListener('change', e => { addFiles(e.target.files, { board: S.libBoard }); e.target.value = ''; });
+  // Practice tab: drop files onto the setup card
+  const setupCard = $('#v-practice .setup');
+  if (setupCard) {
+    setupCard.addEventListener('dragover', e => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { e.preventDefault(); setupCard.classList.add('over'); } });
+    setupCard.addEventListener('dragleave', () => setupCard.classList.remove('over'));
+    setupCard.addEventListener('drop', e => {
+      if (!e.dataTransfer || !e.dataTransfer.files.length) return;
+      e.preventDefault(); setupCard.classList.remove('over');
+      const board = pracTarget();
+      if (!CFG.boards.includes(board)) { CFG.boards = CFG.boards.concat(board); saveCfg(); }
+      addFiles(e.dataTransfer.files, { board });
+    });
+  }
+  // Practice tab: add photos straight into the board you draw from (the first selected one you can add to)
+  $('#pracFileIn').addEventListener('change', e => {
+    const board = pracTarget();
+    if (!CFG.boards.includes(board)) { CFG.boards = CFG.boards.concat(board); saveCfg(); }
+    addFiles(e.target.files, { board }); e.target.value = '';
+  });
   $('#libPractice').addEventListener('click', () => { CFG.boards = [S.libBoard]; saveCfg(); location.hash = '#practice'; renderPractice(); });
   $('#boardForm').addEventListener('submit', submitBoardForm);
   $('#boardFormCancel').addEventListener('click', () => { $('#boardForm').hidden = true; boardFormMode = null; });

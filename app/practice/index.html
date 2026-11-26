@@ -84,6 +84,11 @@
         <div class="field">
           <div class="lbl">Draw from</div>
           <div class="chips" id="srcChips"></div>
+          <div class="src-add">
+            <label class="btn sm" for="pracFileIn"><svg class="i"><use href="#i-upload"/></svg>Upload your own references</label>
+            <span class="st-small" id="srcAddNote">Photos, GIFs or short clips. They go into Poses.</span>
+          </div>
+          <input type="file" id="pracFileIn" multiple accept="image/*,video/mp4,video/webm" hidden>
         </div>
         <div id="fixedOpts" class="setup">
           <div class="field">
@@ -177,7 +182,7 @@
       <div class="chips" id="boardTabs" role="group" aria-label="Boards"></div>
       <div class="lib-actions">
         <button type="button" class="btn" id="libPractice"><svg class="i"><use href="#i-play"/></svg>Practice this board</button>
-        <label class="btn primary" for="fileIn" id="libAdd"><svg class="i"><use href="#i-upload"/></svg>Add files</label>
+        <label class="btn primary" for="fileIn" id="libAdd"><svg class="i"><use href="#i-upload"/></svg>Add photos</label>
         <input type="file" id="fileIn" multiple accept="image/*,video/mp4,video/webm" hidden>
       </div>
     </div>
