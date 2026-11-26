@@ -304,14 +304,12 @@ a.hand{text-decoration:underline;text-decoration-thickness:1px;text-underline-of
 :root[data-theme="dark"] .sk .steps .step-box{background:#f3eddf;border-color:transparent}
 :root[data-theme="dark"] .sk .step-box .fig{color:#323230}
 
-/* The session print with the one-minute time-lapse beside it, and the finished sketch on torn paper over the gap */
-.print-col .duo{position:relative;margin-top:clamp(40px,9vw,110px);width:min(100%,1040px);display:grid;grid-template-columns:minmax(0,1600fr) minmax(0,683fr);gap:24px;align-items:stretch}
-.print-col .duo .print img,.print-col .duo .tl-video{height:100%;object-fit:cover}
-.print-col .duo .print{width:auto}
-.print.clip{padding:12px}
-.print.clip .tape.b{left:50%;right:auto;top:-14px;margin-left:-55px;transform:rotate(-3deg)}
+/* The session screenshot and the one-minute time-lapse side by side, bottoms aligned; the finished sketch on torn paper is the one loose piece */
+.print-col .duo{position:relative;margin-top:clamp(56px,9vw,110px);width:100%;display:grid;grid-template-columns:minmax(0,1600fr) minmax(0,703fr);gap:clamp(10px,1.6vw,18px);align-items:end}
+.print-col .duo .print{width:auto;padding:0}
+.print-col .duo .print img{height:auto}
 .tl-video{display:block;width:100%;height:auto;background:#fff}
-.duo .torn{position:absolute;z-index:3;left:64%;top:-22%;width:22%;height:auto;filter:drop-shadow(0 8px 14px rgba(50,50,48,.16));transform:rotate(2deg);pointer-events:none}
+.duo .torn{position:absolute;z-index:3;left:51%;top:-24%;width:26%;height:auto;filter:drop-shadow(0 8px 14px rgba(50,50,48,.16));transform:rotate(2deg);pointer-events:none}
 @media (max-width:767.98px){
   .print-col .duo{grid-template-columns:minmax(0,1fr);gap:36px;justify-items:center}
   .print.clip{width:min(60%,260px)!important}
