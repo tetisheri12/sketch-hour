@@ -241,7 +241,7 @@ a.hand{text-decoration:underline;text-decoration-thickness:1px;text-underline-of
   .print-col .side-notes li:nth-child(n) .arrow{transform:rotate(90deg);align-self:center;margin:0;width:40px;height:22px}
 }
 /* how a class runs: plain heading, quiet frames instead of the hand-drawn ones */
-.sk .steps .step-box,.sk .steps li:nth-child(even) .step-box{border:1.5px solid var(--rule);border-radius:10px}
+.sk .steps .step-box,.sk .steps li:nth-child(even) .step-box{border:0;border-radius:0;box-shadow:var(--print-shadow)}
 /* sticky notes: the dusty rose one takes ink text, the others stay as they were; the path icon faces the other way */
 .sticky:nth-child(1){--text:#323230;--pen:#323230}
 .sticky:nth-child(3) .icon{transform:scaleX(-1)}
@@ -305,15 +305,16 @@ a.hand{text-decoration:underline;text-decoration-thickness:1px;text-underline-of
 :root[data-theme="dark"] .sk .step-box .fig{color:#323230}
 
 /* The session print with the one-minute time-lapse beside it, and the finished sketch on torn paper over the gap */
-.print-col .duo{position:relative;margin-top:clamp(40px,9vw,110px);width:min(100%,1040px);display:grid;grid-template-columns:minmax(0,1600fr) minmax(0,690fr);gap:28px;align-items:center}
+.print-col .duo{position:relative;margin-top:clamp(40px,9vw,110px);width:min(100%,1040px);display:grid;grid-template-columns:minmax(0,1600fr) minmax(0,683fr);gap:24px;align-items:stretch}
+.print-col .duo .print img,.print-col .duo .tl-video{height:100%;object-fit:cover}
 .print-col .duo .print{width:auto}
-.print.clip{padding:10px;transform:rotate(1deg)}
+.print.clip{padding:12px}
 .print.clip .tape.b{left:50%;right:auto;top:-14px;margin-left:-55px;transform:rotate(-3deg)}
 .tl-video{display:block;width:100%;height:auto;background:#fff}
-.duo .torn{position:absolute;z-index:3;left:57%;top:-24%;width:22%;height:auto;filter:drop-shadow(0 8px 14px rgba(50,50,48,.16));transform:rotate(2deg);pointer-events:none}
+.duo .torn{position:absolute;z-index:3;left:64%;top:-22%;width:22%;height:auto;filter:drop-shadow(0 8px 14px rgba(50,50,48,.16));transform:rotate(2deg);pointer-events:none}
 @media (max-width:767.98px){
   .print-col .duo{grid-template-columns:minmax(0,1fr);gap:36px;justify-items:center}
-  .print.clip{width:min(56%,240px)!important;justify-self:start;margin-left:6%}
-  .duo .print.tilt-l .tape.c{display:none}
-  .duo .torn{left:auto;right:0;top:auto;bottom:14%;width:44%}
+  .print.clip{width:min(60%,260px)!important}
+  .duo .torn{left:auto;right:-4%;top:auto;bottom:-6%;width:40%}
 }
+.sk .steps .step-box + h3{margin-top:20px}
