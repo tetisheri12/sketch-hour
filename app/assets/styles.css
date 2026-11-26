@@ -31,7 +31,7 @@ img{max-width:100%}
   --on-primary:#ffffff;
   --accent:var(--lavender-grey);     /* charts, schedule strip, progress */
   --on-accent:#ffffff;
-  --link:var(--dusk-blue);           /* links */
+  --link:#4c5296;                    /* links: a shade darker than Slate Indigo so they pass on Eggshell too */
   --warning:var(--pale-oak);         /* last seconds of a pose */
   --success:var(--sage);
   --danger:var(--brick);

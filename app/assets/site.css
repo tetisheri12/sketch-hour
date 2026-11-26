@@ -6,7 +6,7 @@
 .site{
   --gutter:20px;--sec-y:48px;
   --h1:2.5rem;--h2:1.875rem;--h3:1.375rem;--h4:1.125rem;--lead:1.125rem;--body:1rem;--small:.875rem;
-  --accent:var(--ink);--accent-hover:#4a4a47;--on-accent:#fff;--accent-text:var(--dusk-blue);
+  --accent:var(--ink);--accent-hover:#4a4a47;--on-accent:#fff;--accent-text:#4c5296;
   --band:var(--linen);--card:#fff;--muted:var(--text-weak);
   --band-accent:var(--dusk-blue);
   padding:0;font-size:var(--body);line-height:1.5
