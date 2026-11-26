@@ -8,10 +8,13 @@
 @font-face{font-family:"Caveat";font-style:normal;font-display:swap;font-weight:400 700;src:url(fonts/caveat-latin-ext-wght-normal.woff2) format("woff2-variations"),url(fonts/caveat-latin-ext-wght-normal.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
 
 
+/* Rifat's own handwriting (made with Calligraphr), for the margin notes and captions. Caveat fills in glyphs it does not have yet. */
+@font-face{font-family:"Sketchhour Hand";font-style:normal;font-display:swap;font-weight:400 700;size-adjust:100%;src:url(fonts/sketchhour-hand.woff2) format("woff2")}
+
 /* Layout: one column of sketchbook spreads on a dot grid; notes sit in the right margin and point back with arrows. */
 .sk{
   --font-head:"Bricolage Grotesque","Nunito",system-ui,sans-serif;
-  --font-hand:"Caveat","Segoe Print","Bradley Hand",cursive;
+  --font-hand:"Sketchhour Hand","Caveat","Segoe Print","Bradley Hand",cursive;
   /* Palette sampled from the girl-and-bird pastel: ink, Blue Slate, Slate Indigo, Lavender Grey,
      Eggshell paper, and Salmon, Sage and Blush for tape and highlights only (never text). */
   --ink:#323230;--dusk-blue:#6168b2;--lavender-grey:#757692;--linen:#f5eedb;--pale-oak:#cfa09b;--brick:#e27e6b;--sage:#b4c39a;
