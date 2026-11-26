@@ -57,7 +57,7 @@
   });
 })();
 
-// The one-minute time-lapse plays only while it is on screen, and not at all with reduced motion (the poster shows the finished drawing).
+// The one-minute time-lapse plays once while it is on screen and stops on the finished drawing, and not at all with reduced motion (the poster shows the finished drawing).
 (function () {
   var v = document.querySelector('.tl-video');
   if (!v) return;
@@ -66,6 +66,6 @@
   v.muted = true;
   if (!('IntersectionObserver' in window)) { v.play().catch(function () {}); return; }
   new IntersectionObserver(function (entries) {
-    if (entries[0].isIntersecting) v.play().catch(function () {}); else v.pause();
+    if (entries[0].isIntersecting) { if (!v.ended) v.play().catch(function () {}); } else v.pause();
   }, { threshold: 0.35 }).observe(v);
 })();
