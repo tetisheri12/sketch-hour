@@ -57,16 +57,19 @@
 <!-- The app as a taped-in print, with notes pointing at it -->
 <section class="sk-sec" aria-label="The session player">
   <div class="wrap print-col">
-    <figure class="print tilt-l">
-      <img src="/assets/img/session.webp" width="1600" height="1000" alt="The session player showing a 30-second gesture pose of a dancer mid-kick, with the countdown and controls along the bottom" fetchpriority="high">
-      <span class="drw d-tape tape a" data-file="extra-tape" aria-hidden="true"></span>
-      <span class="drw d-tape tape t3 b" data-file="extra-tape" aria-hidden="true"></span>
-      <span class="drw d-tape tape t2 c" data-file="extra-tape" aria-hidden="true"></span>
-    </figure>
+    <div class="duo">
+      <figure class="print tilt-l">
+        <img src="/assets/img/session.webp" width="1600" height="1090" alt="The session player running a one-minute pose of a dancer mid-kick, with the countdown and controls along the bottom" fetchpriority="high">
+      </figure>
+      <figure class="print clip">
+        <video class="tl-video" src="/assets/img/timelapse-1min.mp4" poster="/assets/img/timelapse-1min.webp" width="684" height="1098" muted loop playsinline preload="metadata" aria-label="Time-lapse of a one-minute drawing of the same pose: a loose red gesture first, then the ink line over it"></video>
+      </figure>
+      <img class="torn" src="/assets/img/sketch-1min.webp" width="640" height="583" alt="" loading="lazy">
+    </div>
     <ul class="side-notes hand">
       <li><span class="drw d-arrow-4 arrow" data-file="mark-arrow-4" aria-hidden="true"></span>the clock counts down each pose</li>
       <li><span class="drw d-arrow-2 arrow flip" data-file="mark-arrow-2" aria-hidden="true"></span>pause, skip or go back any time</li>
-      <li><span class="drw d-arrow-1 arrow" data-file="mark-arrow-1" aria-hidden="true"></span>grey it out for value studies</li>
+      <li><span class="drw d-arrow-1 arrow" data-file="mark-arrow-1" aria-hidden="true"></span>one minute, start to finish</li>
     </ul>
   </div>
 </section>

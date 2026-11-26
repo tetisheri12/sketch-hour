@@ -56,3 +56,16 @@
     io.observe(fig);
   });
 })();
+
+// The one-minute time-lapse plays only while it is on screen, and not at all with reduced motion (the poster shows the finished drawing).
+(function () {
+  var v = document.querySelector('.tl-video');
+  if (!v) return;
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) { v.controls = true; return; }
+  v.muted = true;
+  if (!('IntersectionObserver' in window)) { v.play().catch(function () {}); return; }
+  new IntersectionObserver(function (entries) {
+    if (entries[0].isIntersecting) v.play().catch(function () {}); else v.pause();
+  }, { threshold: 0.35 }).observe(v);
+})();

@@ -303,3 +303,17 @@ a.hand{text-decoration:underline;text-decoration-thickness:1px;text-underline-of
 }
 :root[data-theme="dark"] .sk .steps .step-box{background:#f3eddf;border-color:transparent}
 :root[data-theme="dark"] .sk .step-box .fig{color:#323230}
+
+/* The session print with the one-minute time-lapse beside it, and the finished sketch on torn paper over the gap */
+.print-col .duo{position:relative;margin-top:clamp(40px,9vw,110px);width:min(100%,1040px);display:grid;grid-template-columns:minmax(0,1600fr) minmax(0,690fr);gap:28px;align-items:center}
+.print-col .duo .print{width:auto}
+.print.clip{padding:10px;transform:rotate(1deg)}
+.print.clip .tape.b{left:50%;right:auto;top:-14px;margin-left:-55px;transform:rotate(-3deg)}
+.tl-video{display:block;width:100%;height:auto;background:#fff}
+.duo .torn{position:absolute;z-index:3;left:57%;top:-24%;width:22%;height:auto;filter:drop-shadow(0 8px 14px rgba(50,50,48,.16));transform:rotate(2deg);pointer-events:none}
+@media (max-width:767.98px){
+  .print-col .duo{grid-template-columns:minmax(0,1fr);gap:36px;justify-items:center}
+  .print.clip{width:min(56%,240px)!important;justify-self:start;margin-left:6%}
+  .duo .print.tilt-l .tape.c{display:none}
+  .duo .torn{left:auto;right:0;top:auto;bottom:14%;width:44%}
+}
