@@ -17,8 +17,10 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M7 29.5c1.6-8.6 6-15 14.5-20.4' fill='none' stroke='%238d9cb7' stroke-width='3.2' stroke-linecap='round'/%3E%3Cellipse cx='24.6' cy='6.2' rx='3.3' ry='4' transform='rotate(32 24.6 6.2)' fill='none' stroke='%23515e7e' stroke-width='2'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/assets/styles.css">
 <link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="/assets/sketchbook.css">
+<script src="/assets/sketchbook.js" defer></script>
 </head>
-<body class="site">
+<body class="site sk">
 <header class="top">
   <div class="top-in">
     <a class="brand" href="/" aria-label="Sketch Hour home">
@@ -30,106 +32,174 @@
   </div>
 </header>
 <main>
-<section class="hero">
+
+<!-- Hero: the headline, marked up like a teacher's notes in the margin -->
+<section class="sk-hero">
   <div class="wrap">
-    <div class="hero-copy">
-      <span class="badge">For artists who learn from reference</span>
-      <h1>Your references, a timer, and an hour to <span class="scribble">draw<svg viewBox="0 0 200 20" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M3 13C38 6 82 3 121 8s58 9 76 3" vector-effect="non-scaling-stroke"/></svg></span>.</h1>
-      <p class="lead">Timed gesture sessions like a life-drawing class, from 30-second warm-ups to long studies.</p>
-      <div class="cta-row">
-        <a class="btn primary big" href="/practice/">Start practicing</a>
-        <a class="btn big" href="#features">See how it works</a>
-      </div>
-      <p class="fine">Free. Nothing to install. No account needed.</p>
+    <p class="hand kicker">for artists who learn from reference</p>
+    <div class="hero-grid">
+      <h1>Your references,<br>a timer, and<br><span class="mk">an hour<span class="drw d-underline-2 stretch mk-under2" data-file="mark-underline-2" aria-hidden="true"></span></span> to draw.<span class="drw d-star mk-star" data-file="mark-star" aria-hidden="true"></span></h1>
+      <ul class="margin-notes">
+        <li><span class="drw d-arrow-1 arrow" data-file="mark-arrow-1" aria-hidden="true"></span><span class="hand">your Pinterest boards, or ours</span></li>
+        <li><span class="drw d-arrow-2 arrow" data-file="mark-arrow-2" aria-hidden="true"></span><span class="hand">30-second warm-ups to long studies</span></li>
+        <li><span class="drw d-arrow-3 arrow" data-file="mark-arrow-3" aria-hidden="true"></span><span class="hand">15, 30 or 60 minutes. You pick</span></li>
+      </ul>
     </div>
-    <div class="hero-shot"><img src="/assets/img/session.webp" width="1600" height="1000" alt="The session player showing a 30-second gesture pose of a dancer mid-kick, with the countdown and controls along the bottom" fetchpriority="high"></div>
-  </div>
-</section>
-
-<section class="ref-strip" aria-label="Examples of references to draw from">
-  <ul class="ref-row" tabindex="0" aria-label="Example references"><li><img src="/assets/img/strip/01.webp" width="120" height="180" alt="A dancer mid-kick, in black and white" loading="lazy" decoding="async"></li><li><img src="/assets/img/strip/02.webp" width="119" height="180" alt="Portrait of a woman with curly hair in low light" loading="lazy" decoding="async"></li><li><img src="/assets/img/strip/05.webp" width="120" height="180" alt="A straight road leading to mountains" loading="lazy" decoding="async"></li><li><img src="/assets/img/strip/06.webp" width="144" height="180" alt="Silhouette of a man with one arm raised" loading="lazy" decoding="async"></li><li><img src="/assets/img/strip/04.webp" width="121" height="180" alt="A painting of a girl in a white dress sitting in the grass" loading="lazy" decoding="async"></li><li><img src="/assets/img/strip/09.webp" width="120" height="180" alt="A dancer posing against a concrete wall" loading="lazy" decoding="async"></li><li><img src="/assets/img/strip/07.webp" width="144" height="180" alt="Silhouette of a woman with a hand on her head" loading="lazy" decoding="async"></li><li><img src="/assets/img/strip/08.webp" width="240" height="180" alt="A road through green fields toward mountains, from above" loading="lazy" decoding="async"></li><li><img src="/assets/img/strip/03.webp" width="120" height="180" alt="A dancer kicking in front of a white wall" loading="lazy" decoding="async"></li></ul>
-</section>
-
-<section class="sec band-linen" id="features" aria-labelledby="how-h">
-  <div class="wrap">
-    <div class="sec-head"><h2 id="how-h">How it works</h2></div>
-    <div class="rows">
-    <article class="row">
-      <div class="row-copy">
-        <span class="lbl">Sessions</span>
-        <h3>Practice like you’re in a life-drawing class</h3>
-        <p>Pick a 15, 30 or 60-minute class: quick gestures first, a long study last.</p>
-        <ul class="tags"><li>Grayscale</li><li>Random mirror</li><li>Thirds grid</li><li>Sound cues</li></ul>
-      </div>
-      <figure class="shot"><img src="/assets/img/home-class.webp" width="1600" height="808" alt="Session setup with the 30-minute class selected and its schedule of poses shown as a strip" loading="lazy" decoding="async"></figure>
-    </article>
-    <article class="row flip">
-      <div class="row-copy">
-        <span class="lbl">Library</span>
-        <h3>Draw from your own references</h3>
-        <p>Your Pinterest boards and ours, plus your own pins, photos, GIFs and clips.</p>
-        
-      </div>
-      <figure class="shot"><img src="/assets/img/home-library.webp" width="1600" height="748" alt="A board in the Library holding photo references: dancers, silhouettes, a portrait, two roads and a painting" loading="lazy" decoding="async"></figure>
-    </article>
-    <article class="row">
-      <div class="row-copy">
-        <span class="lbl">Curriculum</span>
-        <h3>A path through the skills of drawing</h3>
-        <p>30 units in 8 tracks, from figure to environments, each with references made for it.</p>
-        
-      </div>
-      <figure class="shot"><img src="/assets/img/home-learn.webp" width="1600" height="742" alt="The Learn tab showing the next unit, Figure 1: Gesture, with a row of posed mannequin references" loading="lazy" decoding="async"></figure>
-    </article>
+    <p class="lead">Timed gesture sessions like a life-drawing class, from 30-second warm-ups to long studies.</p>
+    <div class="cta-row">
+      <a class="btn primary big" href="/practice/"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.6 2.4l3 3L6 13H3v-3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Start practicing</a>
+      <a class="btn big" href="#features"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M4 9l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>See how it works</a>
     </div>
   </div>
 </section>
 
-<section class="sec" aria-labelledby="more-h">
-  <div class="wrap">
-    <div class="sec-head"><h2 id="more-h">More tools</h2></div>
-    <div class="tools">
-      <article class="tool">
-        <div class="tool-media pair">
-          <figure><img src="/assets/img/home-value-photo.webp" width="640" height="967" alt="A portrait photo in the reference viewer" loading="lazy" decoding="async"><figcaption>Photo</figcaption></figure>
-          <figure><img src="/assets/img/home-value-3.webp" width="640" height="967" alt="The same portrait reduced to three values" loading="lazy" decoding="async"><figcaption>3 values</figcaption></figure>
-        </div>
-        <h3>Value studies</h3>
-        <p>Zoom, flip, grayscale and 2-, 3- or 5-value views of your references.</p>
-      </article>
-      <article class="tool">
-        <div class="tool-media"><img src="/assets/img/home-places.webp" width="640" height="961" alt="A road running toward mountains with the thirds grid on" loading="lazy" decoding="async"></div>
-        <h3>Film stills and places</h3>
-        <p>FilmGrab stills and street views for timed perspective studies.</p>
-      </article>
-      <article class="tool">
-        <div class="tool-media contain"><img src="/assets/img/home-timer.webp" width="1400" height="813" alt="The timer counting down from 10 minutes, with pause, +1 min and reset buttons" loading="lazy" decoding="async"></div>
-        <h3>Timer and log</h3>
-        <p>Rounds and rests, plus your minutes and streak for the week.</p>
-      </article>
-    </div>
-  </div>
-</section>
-
-<section class="sec band-accent" aria-labelledby="keys-h">
-  <div class="wrap keys-wrap">
-    <h2 id="keys-h">Keep your hands on the pen</h2>
-    <ul class="keycaps">
-      <li><kbd>Space</kbd><span>Pause or resume</span></li>
-      <li><span class="caps"><kbd>←</kbd><kbd>→</kbd></span><span>Previous or next pose</span></li>
-      <li><kbd>G</kbd><span>Grayscale</span></li>
-      <li><kbd>F</kbd><span>Mirror</span></li>
-      <li><kbd>T</kbd><span>Thirds grid</span></li>
+<!-- The app as a taped-in print, with notes pointing at it -->
+<section class="sk-sec" aria-label="The session player">
+  <div class="wrap print-col">
+    <figure class="print tilt-l">
+      <img src="/assets/img/session.webp" width="1600" height="1000" alt="The session player showing a 30-second gesture pose of a dancer mid-kick, with the countdown and controls along the bottom" fetchpriority="high">
+      <span class="drw d-tape tape a" data-file="extra-tape" aria-hidden="true"></span>
+      <span class="drw d-tape tape t3 b" data-file="extra-tape" aria-hidden="true"></span>
+      <span class="drw d-tape tape t2 c" data-file="extra-tape" aria-hidden="true"></span>
+    </figure>
+    <ul class="side-notes hand">
+      <li><span class="drw d-arrow-4 arrow" data-file="mark-arrow-4" aria-hidden="true"></span>the clock counts down each pose</li>
+      <li><span class="drw d-arrow-2 arrow flip" data-file="mark-arrow-2" aria-hidden="true"></span>pause, skip or go back any time</li>
+      <li><span class="drw d-arrow-1 arrow" data-file="mark-arrow-1" aria-hidden="true"></span>grey it out for value studies</li>
     </ul>
-    <p class="more-link"><a href="/handbook/#shortcuts">All keyboard shortcuts</a></p>
   </div>
 </section>
 
-<section class="sec closing" aria-labelledby="closing-h">
+<!-- How a class runs -->
+<section class="sk-sec" id="features" aria-labelledby="class-h">
   <div class="wrap">
-    <h2 id="closing-h">Ready for your sketch hour?</h2>
-    <p>Pick a class and start with a 30-second warm-up.</p>
-    <div class="cta-row"><a class="btn primary big" href="/practice/">Start practicing</a></div>
+    <h2 id="class-h">How a class runs</h2>
+    <p class="sec-lead">Pick a 15, 30 or 60-minute class: quick gestures first, a long study last. The rhythm of a life-drawing class, at your own desk.</p>
+    <ol class="steps">
+      <li><div class="step-box"><span class="drw d-class-1 fig" data-file="class-1-warmup" aria-hidden="true"></span></div><h3>Warm-up gestures</h3><p class="hand">loosen up</p></li>
+      <li><div class="step-box"><span class="drw d-class-2 fig" data-file="class-2-short" aria-hidden="true"></span></div><h3>Short poses</h3><p class="hand">find the line of action</p></li>
+      <li><div class="step-box"><span class="drw d-class-3 fig" data-file="class-3-longer" aria-hidden="true"></span></div><h3>Longer poses</h3><p class="hand">add form and shadow</p></li>
+      <li><div class="step-box"><span class="drw d-class-4 fig" data-file="class-4-study" aria-hidden="true"></span></div><h3>One long study</h3><p class="hand">really look</p></li>
+    </ol>
+  </div>
+</section>
+
+<!-- Three sticky notes -->
+<section class="sk-sec" aria-label="What Sketch Hour does">
+  <div class="wrap stickies">
+    <article class="sticky">
+      <span class="drw d-tape tape t3" data-file="extra-tape" aria-hidden="true"></span>
+      <span class="drw d-icon-timer icon" data-file="icon-timer" aria-hidden="true"></span>
+      <h3>Class-style sessions</h3>
+      <p>Grayscale, random mirror, a thirds grid and sound cues in every session.</p>
+      <p class="hand">or use the plain timer</p>
+    </article>
+    <article class="sticky">
+      <span class="drw d-tape tape" data-file="extra-tape" aria-hidden="true"></span>
+      <span class="drw d-icon-references icon" data-file="icon-references" aria-hidden="true"></span>
+      <h3>Your own references</h3>
+      <p>Your Pinterest boards and ours, plus your own pins, photos, GIFs and clips.</p>
+      <p class="hand">hide the ones you don’t want</p>
+    </article>
+    <article class="sticky">
+      <span class="drw d-tape tape t2" data-file="extra-tape" aria-hidden="true"></span>
+      <span class="drw d-icon-path icon" data-file="icon-path" aria-hidden="true"></span>
+      <h3>A path through drawing</h3>
+      <p>30 units in 8 tracks, from figure to environments, each with references made for it.</p>
+      <a class="hand" href="/curriculum/">see all 30 units</a>
+    </article>
+  </div>
+</section>
+
+<!-- More tools, pinned up as prints -->
+<section class="sk-sec" aria-labelledby="more-h">
+  <div class="wrap">
+    <h2 id="more-h">More tools</h2>
+    <div class="prints">
+      <div class="snap">
+        <figure class="polaroid scrub" style="--x:38%">
+          <span class="tape" aria-hidden="true"></span>
+          <div class="cmp">
+            <img src="/assets/img/home-value-3.webp" width="640" height="967" alt="The same portrait reduced to three values" loading="lazy" decoding="async">
+            <img class="cmp-top" src="/assets/img/home-value-photo.webp" width="640" height="967" alt="A portrait photo in the reference viewer" loading="lazy" decoding="async">
+            <span class="cmp-line" aria-hidden="true"></span>
+            <input class="cmp-range" id="scrub-values" type="range" min="0" max="100" value="38" aria-label="Slide between the photo and its three-value version">
+          </div>
+          <figcaption class="hand"><span>a photo…</span><span>…in three values</span></figcaption>
+        </figure>
+        <p>Zoom, flip, grayscale and 2-, 3- or 5-value views of your references.</p>
+      </div>
+      <div class="snap">
+        <figure class="polaroid scrub" style="--x:55%">
+          <span class="tape" aria-hidden="true"></span>
+          <div class="cmp">
+            <img src="/assets/img/home-places.webp" width="640" height="961" alt="A straight road running toward mountains" loading="lazy" decoding="async">
+            <svg class="cmp-after guides" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <g class="halo"><path d="M0 80.8H100"/><path d="M48.1 80.8L-20 100M48.1 80.8L8 100M48.1 80.8L46.5 100M48.1 80.8L88 100M48.1 80.8L125 100"/><path d="M48.1 80.8L-10 54M48.1 80.8L110 50"/></g>
+              <g class="ink"><path class="horizon" d="M0 80.8H100"/><path d="M48.1 80.8L-20 100M48.1 80.8L8 100M48.1 80.8L46.5 100M48.1 80.8L88 100M48.1 80.8L125 100"/><path class="faint" d="M48.1 80.8L-10 54M48.1 80.8L110 50"/></g>
+            </svg>
+            <span class="vp" aria-hidden="true"></span>
+            <span class="cmp-line" aria-hidden="true"></span>
+            <input class="cmp-range" id="scrub-places" type="range" min="0" max="100" value="55" aria-label="Slide to draw the horizon and vanishing point over the road">
+          </div>
+          <figcaption class="hand"><span>a road…</span><span>…its vanishing point</span></figcaption>
+        </figure>
+        <p>FilmGrab stills and street views for timed perspective studies.</p>
+      </div>
+      <div class="snap">
+        <figure class="polaroid scrub" style="--x:68%">
+          <span class="tape" aria-hidden="true"></span>
+          <div class="cmp">
+            <div class="log-face" aria-hidden="true">
+              <span class="lf-label">This week</span>
+              <span class="lf-bars"><i style="--h:40%"></i><i style="--h:65%"></i><i style="--h:0%"></i><i style="--h:85%"></i><i style="--h:55%"></i><i style="--h:100%"></i><i style="--h:30%"></i></span>
+              <span class="lf-days"><b>M</b><b>T</b><b>W</b><b>T</b><b>F</b><b>S</b><b>S</b></span>
+              <span class="lf-stats"><span><strong>142</strong> min</span><span><strong>4</strong> days in a row</span></span>
+            </div>
+            <img class="cmp-top" src="/assets/img/home-timer-square.webp" width="720" height="720" alt="The timer counting down from 10 minutes, with pause, +1 min and reset buttons" loading="lazy" decoding="async">
+            <span class="cmp-line" aria-hidden="true"></span>
+            <input class="cmp-range" id="scrub-timer" type="range" min="0" max="100" value="68" aria-label="Slide between the timer and the practice log">
+          </div>
+          <figcaption class="hand"><span>a timer…</span><span>…and a log</span></figcaption>
+        </figure>
+        <p>Rounds and rests, plus your minutes and streak for the week.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Shortcuts on a page of lined paper -->
+<section class="sk-sec" aria-labelledby="keys-h">
+  <div class="wrap">
+    <div class="lined graph">
+      <h2 id="keys-h">Keep your hands on the pen</h2>
+      <ul class="keylist">
+        <li><kbd>Space</kbd><span>Pause or resume</span></li>
+        <li><span class="caps"><kbd>←</kbd><kbd>→</kbd></span><span>Previous or next pose</span></li>
+        <li><kbd>G</kbd><span>Grayscale</span></li>
+        <li><kbd>F</kbd><span>Mirror</span></li>
+        <li><kbd>T</kbd><span>Thirds grid</span></li>
+        <li><kbd>H</kbd><span>Hide this photo</span></li>
+      </ul>
+      <a class="hand" href="/handbook/#shortcuts">all the shortcuts are in the Handbook</a>
+    </div>
+  </div>
+</section>
+
+<!-- Closing -->
+<section class="sk-sec sk-close" aria-labelledby="closing-h">
+  <div class="wrap">
+    <div class="close-head">
+      <span class="drw d-pencil" data-file="closing-pencil" aria-hidden="true"></span>
+      <h2 id="closing-h">Ready for your sketch hour?</h2>
+      <span class="drw d-paper" data-file="closing-paper" aria-hidden="true"></span>
+    </div>
+    <ul class="checklist hand">
+      <li><span class="drw d-checkbox box" data-file="extra-checkbox" aria-hidden="true"></span>pencil</li>
+      <li><span class="drw d-checkbox box" data-file="extra-checkbox" aria-hidden="true"></span>paper</li>
+      <li><span class="drw d-checkbox box" data-file="extra-checkbox" aria-hidden="true"></span>an hour</li>
+    </ul>
+    <div class="cta-row"><a class="btn primary big" href="/practice/"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.6 2.4l3 3L6 13H3v-3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Start practicing</a></div>
     <p class="fine">Works on computer, tablet and phone.</p>
   </div>
 </section>
@@ -162,5 +232,6 @@
     <p class="foot-legal">© 2026 Sketch Hour. Not affiliated with Pinterest, FilmGrab or MapCrunch.</p>
   </div>
 </footer>
+
 </body>
 </html>

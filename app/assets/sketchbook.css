@@ -22,7 +22,7 @@
   --paper:#fbf8f2;
   --line:var(--ink);                       /* drawings and hand-drawn borders */
   --pen:#6168b2;                           /* handwritten notes and marks */
-  --sticky-1:#f3e3df;--sticky-2:#f5eedb;--sticky-3:#e6ebdc;
+  --sticky-1:#c3a29b;--sticky-2:#f5eedb;--sticky-3:#e6ebdc;
   --print:#ffffff;--print-shadow:0 18px 40px rgba(50,50,48,.12);
   --tape:rgba(226,126,107,.55);--tape-2:rgba(180,195,154,.7);--tape-3:rgba(97,104,178,.35);
   --rule:#e4e2da;
@@ -215,3 +215,91 @@ a.hand{text-decoration:underline;text-decoration-thickness:1px;text-underline-of
 .sk :is(h1,h2,h3){font-weight:700}
 .sk h3{font-weight:600}
 .sk .brand span{font-weight:700}
+
+/* ---------- changes from the Figma home page (26 Nov) ---------- */
+/* hero: salmon outline on the second button, salmon star, a lighter underline */
+.sk .btn:not(.primary){border-color:var(--brick)}
+.sk .btn:not(.primary):hover{border-color:color-mix(in srgb,var(--brick) 70%,var(--ink))}
+.mk-star{color:var(--brick)}
+.mk-under2{opacity:.55}
+/* the session print sits centred, with its three notes in a row underneath, arrows pointing up at it */
+.print-col{display:grid;justify-items:center;gap:30px}
+.print-col .print{width:min(100%,820px)}
+.print .tape.c{right:auto;left:50%;margin-left:-65px}
+.print-col .side-notes{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;align-items:start}
+.print-col .side-notes li{flex-direction:column;align-items:flex-start;gap:6px;font-size:1.55rem;line-height:1.15}
+.print-col .side-notes li:nth-child(1){align-items:flex-start}
+.print-col .side-notes li:nth-child(2){align-items:center;text-align:center}
+.print-col .side-notes li:nth-child(3){align-items:flex-end;text-align:right}
+.print-col .side-notes .arrow{order:-1;width:56px;height:28px}
+.print-col .side-notes li:nth-child(1) .arrow{transform:rotate(130deg);align-self:flex-end;margin-right:18%}
+.print-col .side-notes li:nth-child(2) .arrow{transform:rotate(90deg)}
+.print-col .side-notes li:nth-child(3) .arrow{transform:rotate(50deg);align-self:flex-start;margin-left:18%}
+@media (max-width:767.98px){
+  .print-col .side-notes{grid-template-columns:minmax(0,1fr);gap:12px}
+  .print-col .side-notes li:nth-child(n){flex-direction:row;align-items:center;text-align:left;font-size:1.4rem}
+  .print-col .side-notes li:nth-child(n) .arrow{transform:rotate(90deg);align-self:center;margin:0;width:40px;height:22px}
+}
+/* how a class runs: plain heading, quiet frames instead of the hand-drawn ones */
+.sk .steps .step-box,.sk .steps li:nth-child(even) .step-box{border:1.5px solid var(--rule);border-radius:10px}
+/* sticky notes: the dusty rose one takes ink text, the others stay as they were; the path icon faces the other way */
+.sticky:nth-child(1){--text:#323230;--pen:#323230}
+.sticky:nth-child(3) .icon{transform:scaleX(-1)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .sticky:nth-child(1){--text:#e8e2dc;--pen:#e8e2dc}}
+:root[data-theme="dark"] .sticky:nth-child(1){--text:#e8e2dc;--pen:#e8e2dc}
+/* more tools: three bigger polaroids */
+.prints{grid-template-columns:repeat(3,minmax(0,300px));justify-content:space-between;gap:56px 40px}
+.snap:nth-child(n){margin-top:0}
+.snap:nth-child(1) .polaroid{--tilt:-4deg;--tape-c:var(--tape-sage)}
+.snap:nth-child(2) .polaroid{--tilt:-1deg;--tape-c:var(--tape-indigo);margin-top:10px}
+.snap:nth-child(3) .polaroid{--tilt:4deg;--tape-c:var(--tape-salmon)}
+.snap:nth-child(2) > p{margin-top:10px}
+@media (max-width:1023.98px){.prints{grid-template-columns:repeat(3,minmax(0,1fr));gap:48px 24px}}
+@media (max-width:767.98px){.prints{grid-template-columns:minmax(0,1fr);max-width:320px;margin-inline:auto}}
+/* each polaroid reacts to the mouse: move across the picture (or drag, or use the arrow keys) and it changes.
+   --x is the pointer position across the picture, 0 to 100%. sketchbook.js keeps it in step. */
+.cmp{position:relative;overflow:hidden;touch-action:pan-y;aspect-ratio:1/1;background:var(--sunk)}
+.cmp img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 22%}
+.cmp .cmp-top{position:absolute;inset:0;clip-path:inset(0 calc(100% - var(--x,50%)) 0 0)}
+.cmp .cmp-after{position:absolute;inset:0;width:100%;height:100%;clip-path:inset(0 0 0 var(--x,50%))}
+.cmp-line{position:absolute;top:0;bottom:0;left:var(--x,50%);width:2px;margin-left:-1px;background:#fff;pointer-events:none}
+.cmp-line::after{content:"";position:absolute;top:50%;left:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.cmp-range{position:absolute;inset:0;z-index:2;width:100%;height:100%;margin:0;opacity:0;cursor:ew-resize}
+.cmp:has(.cmp-range:focus-visible){outline:2px solid var(--pen);outline-offset:3px}
+.scrub figcaption{display:flex;justify-content:space-between;gap:8px;padding-inline:8px}
+.polaroid.scrub:hover{transform:rotate(calc(var(--tilt,0deg) / 2))}
+/* perspective guides over the road */
+.guides{pointer-events:none}
+.guides path{fill:none;vector-effect:non-scaling-stroke;stroke-linecap:round}
+.guides .halo path{stroke:rgba(255,255,255,.55);stroke-width:4}
+.guides .ink path{stroke:#e27e6b;stroke-width:2}
+.guides .ink .horizon{stroke-dasharray:6 5}
+.guides .ink .faint{opacity:.6}
+.vp{position:absolute;left:48.1%;top:80.8%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#e27e6b;box-shadow:0 0 0 3px rgba(255,255,255,.7);opacity:0;transition:opacity .15s;pointer-events:none}
+.scrub.vp-on .vp{opacity:1}
+/* timer / log pair: the timer screenshot on the left, a practice-log card on the right */
+
+.log-face{position:absolute;inset:0;display:grid;align-content:center;gap:10px;padding:14% 12%;background:#fff;color:#323230}
+.lf-label{font:700 .6875rem/1 var(--font-body);letter-spacing:.1em;text-transform:uppercase;color:#6a6c78}
+.lf-bars{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;align-items:end;height:38%;min-height:70px;border-bottom:1px solid #e4e2da}
+.lf-bars i{display:block;height:var(--h);min-height:2px;border-radius:4px 4px 0 0;background:linear-gradient(180deg,#6168b2,#cfa09b)}
+.lf-days{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;text-align:center}
+.lf-days b{font:600 .6875rem/1 var(--font-body);color:#6a6c78}
+.lf-stats{display:flex;justify-content:space-between;gap:8px;font:400 .8125rem/1.3 var(--font-body);color:#51606f}
+.lf-stats strong{display:block;font:700 1.6rem/1 var(--font-head);color:#323230;letter-spacing:-.02em}
+/* the small nudge when a polaroid first comes into view (sketchbook.js adds .nudge) */
+@media (prefers-reduced-motion:no-preference){.scrub.nudging .cmp :is(.cmp-top,.cmp-after,.cmp-line){transition:clip-path .7s cubic-bezier(.4,0,.2,1),left .7s cubic-bezier(.4,0,.2,1),width .7s cubic-bezier(.4,0,.2,1)}}
+/* shortcuts on graph paper */
+.lined.graph{background-color:#f3eddf;background-image:linear-gradient(to right,rgba(195,162,155,.45) 1px,transparent 1px),linear-gradient(to bottom,rgba(195,162,155,.45) 1px,transparent 1px);background-size:28px 28px;background-position:-1px -1px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .lined.graph{background-color:#1f2025;background-image:linear-gradient(to right,rgba(207,160,155,.18) 1px,transparent 1px),linear-gradient(to bottom,rgba(207,160,155,.18) 1px,transparent 1px)}}
+:root[data-theme="dark"] .lined.graph{background-color:#1f2025;background-image:linear-gradient(to right,rgba(207,160,155,.18) 1px,transparent 1px),linear-gradient(to bottom,rgba(207,160,155,.18) 1px,transparent 1px)}
+.scrub figcaption span{white-space:nowrap}
+.scrub:not(.timer-scrub) figcaption{font-size:clamp(1.05rem,1.9vw,1.3rem)}
+.guides .halo path{stroke:rgba(255,255,255,.35);stroke-width:3}
+/* dark mode: the class frames stay cream paper with ink drawings, like prints on a dark wall */
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .sk .steps .step-box{background:#f3eddf;border-color:transparent}
+  :root:not([data-theme="light"]) .sk .step-box .fig{color:#323230}
+}
+:root[data-theme="dark"] .sk .steps .step-box{background:#f3eddf;border-color:transparent}
+:root[data-theme="dark"] .sk .step-box .fig{color:#323230}
