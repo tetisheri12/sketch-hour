@@ -524,3 +524,8 @@ input[type="range"]{width:100%;accent-color:var(--primary)}
 .src-add .btn{cursor:pointer}
 #v-practice .setup.over{outline:2px dashed var(--link);outline-offset:4px}
 #startHint .linkish{font-size:inherit}
+/* tab bar that scrolls sideways on phones: fade the edge that has more */
+.tabs.fade-r{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 36px),transparent)}
+.tabs.fade-l{-webkit-mask-image:linear-gradient(to right,transparent,#000 36px);mask-image:linear-gradient(to right,transparent,#000 36px)}
+.tabs.fade-l.fade-r{-webkit-mask-image:linear-gradient(to right,transparent,#000 36px,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(to right,transparent,#000 36px,#000 calc(100% - 36px),transparent)}
+@media (max-width:420px){.tab{padding:0 5px}}

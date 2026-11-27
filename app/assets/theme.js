@@ -34,3 +34,23 @@
     }
   });
 })();
+
+// Phone width: when the tab bar is wider than the screen, fade its edges so it is clear it scrolls sideways,
+// and scroll the current tab into view.
+(function () {
+  document.addEventListener('DOMContentLoaded', function () {
+    var bars = document.querySelectorAll('.tabs');
+    [].forEach.call(bars, function (bar) {
+      function upd() {
+        var more = bar.scrollWidth > bar.clientWidth + 2;
+        bar.classList.toggle('fade-r', more && bar.scrollLeft + bar.clientWidth < bar.scrollWidth - 4);
+        bar.classList.toggle('fade-l', more && bar.scrollLeft > 4);
+      }
+      bar.addEventListener('scroll', upd, { passive: true });
+      window.addEventListener('resize', upd);
+      var cur = bar.querySelector('[aria-current="page"],[aria-selected="true"],.on');
+      if (cur && cur.scrollIntoView && bar.scrollWidth > bar.clientWidth) cur.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      upd(); setTimeout(upd, 300);
+    });
+  });
+})();

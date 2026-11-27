@@ -257,3 +257,4 @@ kbd{display:inline-block;font-family:var(--font-body);font-size:var(--small);fon
 .stat:nth-child(2){background:var(--note-2);--tape:var(--tape-salmon);transform:rotate(.8deg)}
 .stat:nth-child(3){background:var(--note-3);--tape:var(--tape-sage);transform:rotate(-.5deg)}
 @media (prefers-reduced-motion:no-preference){.stat{transition:transform .3s cubic-bezier(.4,0,.2,1)}.stat:hover{transform:rotate(0deg)}}
+@media (max-width:420px){.site .tab{padding:0 6px}}

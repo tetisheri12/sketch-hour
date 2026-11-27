@@ -382,10 +382,10 @@
             <button type="button" data-s="3">3</button>
             <button type="button" data-s="2">2</button>
           </div>
-          <label class="st-range" id="stSplitRow"><span>Shadow</span><input type="range" id="stSplit" min="-50" max="50" value="0"><span id="stSplitV">0</span></label>
-          <label class="st-range"><span>Brightness</span><input type="range" id="stBright" min="-50" max="50" value="0"><span id="stBrightV">0</span></label>
-          <label class="st-range"><span>Contrast</span><input type="range" id="stContrast" min="-50" max="50" value="0"><span id="stContrastV">0</span></label>
-          <label class="st-range"><span>Squint</span><input type="range" id="stBlur" min="0" max="100" value="0"><span id="stBlurV">0</span></label>
+          <label class="st-range" id="stSplitRow"><span>Shadow</span><input type="range" id="stSplit" aria-label="Shadow" min="-50" max="50" value="0"><span id="stSplitV">0</span></label>
+          <label class="st-range"><span>Brightness</span><input type="range" id="stBright" aria-label="Brightness" min="-50" max="50" value="0"><span id="stBrightV">0</span></label>
+          <label class="st-range"><span>Contrast</span><input type="range" id="stContrast" aria-label="Contrast" min="-50" max="50" value="0"><span id="stContrastV">0</span></label>
+          <label class="st-range"><span>Squint</span><input type="range" id="stBlur" aria-label="Squint" min="0" max="100" value="0"><span id="stBlurV">0</span></label>
           <p class="st-vnote">These only change how the reference looks here. Your references stay as they are.</p>
         </div>
         <div class="st-colors" id="stColors" hidden>
@@ -494,7 +494,7 @@
               <div class="st-row" id="stAlignBar" hidden>
                 <button type="button" class="btn sm" id="stAlignCancel">Cancel</button>
               </div>
-              <label class="st-range"><span>Rotate</span><input type="range" id="stRot" min="-45" max="45" step="0.5" value="0"><span id="stRotV">0°</span></label>
+              <label class="st-range"><span>Rotate</span><input type="range" id="stRot" aria-label="Rotate" min="-45" max="45" step="0.5" value="0"><span id="stRotV">0°</span></label>
               <p class="st-small">Drag to move the sketch. Scroll or pinch to resize; Shift + scroll rotates.</p>
             </div>
             <div class="st-sec">
@@ -504,10 +504,10 @@
                 <button type="button" data-v="multiply">Pencil</button>
                 <button type="button" data-v="photo">Photo</button>
               </div>
-              <label class="st-range"><span>Sketch</span><input type="range" id="stOpacity" min="0" max="100" value="90"><span id="stOpacityV">90%</span></label>
-              <label class="st-range" id="stStrengthRow"><span>Pick up</span><input type="range" id="stStrength" min="0" max="100" value="50"><span id="stStrengthV">50</span></label>
+              <label class="st-range"><span>Sketch</span><input type="range" id="stOpacity" aria-label="Sketch" min="0" max="100" value="90"><span id="stOpacityV">90%</span></label>
+              <label class="st-range" id="stStrengthRow"><span>Pick up</span><input type="range" id="stStrength" aria-label="Pick up" min="0" max="100" value="50"><span id="stStrengthV">50</span></label>
               <div id="stColorRow"><div class="chips" id="stLineColors"></div></div>
-              <label class="st-range"><span>Reference</span><input type="range" id="stRefFade" min="15" max="100" value="100"><span id="stRefFadeV">100%</span></label>
+              <label class="st-range"><span>Reference</span><input type="range" id="stRefFade" aria-label="Reference" min="15" max="100" value="100"><span id="stRefFadeV">100%</span></label>
               <div class="st-row">
                 <button type="button" class="btn sm" id="stPeek">Hold to hide sketch</button>
                 <label class="tg"><input type="checkbox" id="stFlicker"> Flicker</label>
@@ -610,7 +610,7 @@
       <button type="button" class="ib" id="vwGray" aria-label="Grayscale (G)" aria-pressed="false"><svg class="i"><use href="#i-gray"/></svg></button>
       <button type="button" class="ib" id="vwGridBtn" aria-label="Thirds grid (T)" aria-pressed="false"><svg class="i"><use href="#i-grid"/></svg></button>
       <button type="button" class="ib txt" id="vwValues" aria-label="Value study (V)"><svg class="i"><use href="#i-values"/></svg><span id="vwValuesLbl">Values</span></button>
-      <label class="thr" id="vwThrWrap" hidden>Split <input type="range" id="vwThr" min="10" max="245" value="128"></label>
+      <label class="thr" id="vwThrWrap" hidden>Split <input type="range" id="vwThr" aria-label="Value split" min="10" max="245" value="128"></label>
     </div>
     <div class="grp" id="vwFrames" hidden>
       <button type="button" class="ib" id="vwFPrev" aria-label="Previous frame (,)"><svg class="i"><use href="#i-fprev"/></svg></button>

@@ -120,6 +120,7 @@ const S = {
   meta: { log: [], pins: [], learn: { done: {}, secs: {} }, hidden: {} },
   samples: { poses: [], film: [], places: [] },
   samplesReady: false,
+  samplesDone: false,
   published: [],
   view: 'practice',
   libBoard: LS.get('sketchhour.lib', 'poses')
@@ -555,7 +556,7 @@ function renderPractice() {
         else CFG.boards = CFG.boards.concat(b.id);
         saveCfg(); renderPractice();
       }
-    }, b.name, h('span', { class: 'ct' }, n ? String(n) : smp ? `${smp} samples` : '0'));
+    }, b.name, h('span', { class: 'ct' }, n ? String(n) : smp ? `${smp} samples` : (!S.loaded || (!S.samplesDone && b.sys)) ? '…' : '0'));
   }));
   $('#srcAddNote').textContent = `Photos, GIFs or short clips. They go into ${boardName(pracTarget())}.`;
   $$('#modeSeg button').forEach(bt => bt.setAttribute('aria-pressed', String(bt.dataset.mode === CFG.mode)));
@@ -593,7 +594,7 @@ function renderPractice() {
   const poses = plan.filter(e => e.t === 'pose').length;
   const avail = pool().length;
   const usingSamples = CFG.boards.every(id => !savedCount(id));
-  $('#stripMeta').textContent = `${poses} poses · ${minsTxt(tot)} min total · ${avail} ${usingSamples ? 'sample ' : ''}reference${avail === 1 ? '' : 's'} in rotation`;
+  $('#stripMeta').textContent = `${poses} poses · ${minsTxt(tot)} min total · ` + (!avail && !S.samplesDone ? 'preparing references…' : `${avail} ${usingSamples ? 'sample ' : ''}reference${avail === 1 ? '' : 's'} in rotation`);
   $('#optShuffle').checked = CFG.shuffle; $('#optGray').checked = CFG.gray; $('#optFlips').checked = CFG.flips;
   $('#optGrid').checked = CFG.grid; $('#optSound').checked = CFG.sound;
   let hint = '';
@@ -898,7 +899,8 @@ function tickPlayer(now) {
 }
 /** Hides the pin on screen from its board and swaps in another photo for this pose (and any later one). */
 function hidePlaying() {
-  const e = P.plan[P.i]; if (!e || e.t !== 'pose' || !isPinRef(e.ref)) return;
+  const e = P.plan[P.i]; if (!e || e.t !== 'pose') return;
+  if (!isPinRef(e.ref)) { toast(e.ref && e.ref.sample ? "Sample references can't be hidden." : 'Only Pinterest pins can be hidden. Remove your own uploads in Library.'); return; }
   const gone = e.ref;
   setPinHidden(gone.board, gone.pin, true);
   const left = realRefs(gone.board).filter(r => !r.pending);
@@ -956,7 +958,7 @@ function finishSession(completed) {
   P.done = true; P.running = false;
   $('#plVid').pause();
   const drawn = [];
-  P.plan.forEach((e, i) => { if (e.t === 'pose' && P.spent[i] >= 5) drawn.push({ ref: e.ref, s: P.spent[i] }); });
+  P.plan.forEach((e, i) => { const sp = Math.round(Math.min(P.spent[i] || 0, e.dur)); if (e.t === 'pose' && sp >= 5) drawn.push({ ref: e.ref, s: sp }); });
   const secs = drawn.reduce((a, x) => a + x.s, 0);
   if (secs >= 30) logEntry(Object.assign({ kind: 'session', label: P.label, secs: Math.round(secs), poses: drawn.length }, lnTag(P.learn)));
   const planned = P.plan.reduce((a, e) => a + (e.t === 'pose' ? e.dur : 0), 0);
@@ -968,7 +970,7 @@ function finishSession(completed) {
   $('#plStats').replaceChildren(
     h('div', null, h('b', null, String(drawn.length)), h('span', null, 'Poses drawn')),
     h('div', null, h('b', null, clock(secs)), h('span', null, 'Time drawing')),
-    h('div', null, h('b', null, secs >= 30 ? 'Logged' : '—'), h('span', null, 'Practice log')));
+    h('div', null, h('b', null, secs >= 30 ? 'Logged' : 'Not logged'), h('span', null, secs >= 30 ? 'Practice log' : 'Under 30 seconds')));
   $('#plThumbs').replaceChildren(...drawn.slice(0, 60).map(x => h('figure', null, mediaThumb(x.ref), h('figcaption', null, clock(x.s)))));
   $('#plEnd').hidden = false; $('#player').classList.remove('idle', 'warn');
   keepAwake(T.running);
@@ -1689,7 +1691,7 @@ async function genSamples() {
     for (let i = 0; i < CORNERS.length; i++) { places.push(await mk('places', 's-c' + i, cornerScene(CORNERS[i]), 'Sample · ' + CORNERS[i].note)); await tick(); }
     S.samples.places = places;
   } catch (e) { /* samples are optional */ }
-  S.samplesReady = true; renderAll();
+  S.samplesReady = true; S.samplesDone = true; renderAll();
 }
 
 /* ============ studio: composition checker + sketch comparison ============ */
@@ -2828,7 +2830,7 @@ function setRefs(id) {
     note: `${it.title} — ${it.artist}${it.date ? ', ' + it.date : ''}`, link: 'https://www.artic.edu/artworks/' + it.id
   } : {
     id: `cur-${id}-${i}`, kind: 'image', cur: true, setName: s.name, w: it.w, h: it.h,
-    url: BASE + it.src, thumb: BASE + it.src, note: s.name
+    url: BASE + it.src, thumb: BASE + it.src.replace(/\/([^/]+)$/, '/t/$1'), note: s.name
   });
   CUR.refs.set(id, c); return c;
 }
@@ -3025,9 +3027,18 @@ function bind() {
   window.addEventListener('hashchange', route);
   // practice
   $$('#modeSeg button').forEach(b => b.addEventListener('click', () => { CFG.mode = b.dataset.mode; saveCfg(); renderPractice(); }));
+  // minutes per pose: 15 seconds to 2 hours; on leaving the box it shows the length actually used
   $('#durCustom').addEventListener('input', e => {
     const v = parseFloat(e.target.value);
-    if (v > 0) { CFG.dur = Math.max(10, Math.round(v * 60)); saveCfg(); renderPractice(); }
+    if (v > 0) { CFG.dur = Math.min(7200, Math.max(15, Math.round(v * 60))); saveCfg(); renderPractice(); }
+  });
+  $('#durCustom').addEventListener('change', e => {
+    const v = parseFloat(e.target.value);
+    if (!(v > 0)) toast('Pose length must be more than 0. Kept ' + dlabel(CFG.dur) + '.');
+    else if (v * 60 < 15) toast('Shortest pose is 15 seconds.');
+    else if (v > 120) toast('Longest pose is 120 minutes.');
+    e.target.value = DURS.includes(CFG.dur) ? '' : String(Math.round(CFG.dur / 60 * 100) / 100);
+    e.target.blur(); renderPractice();
   });
   [['optShuffle', 'shuffle'], ['optGray', 'gray'], ['optFlips', 'flips'], ['optGrid', 'grid'], ['optSound', 'sound']].forEach(([id, k]) =>
     $('#' + id).addEventListener('change', e => { CFG[k] = e.target.checked; saveCfg(); }));
@@ -3135,7 +3146,11 @@ function bind() {
   $('#tStart').addEventListener('click', tToggle);
   $('#tReset').addEventListener('click', tReset);
   $('#tPlus').addEventListener('click', () => { T.left += 60; if (!T.running && T.left > T.total) { T.total = T.left; saveTimer(); } renderTimer(); });
-  const custom = () => { const m = Math.max(0, parseInt($('#tMin').value, 10) || 0), s = Math.min(59, Math.max(0, parseInt($('#tSec').value, 10) || 0)); if (m * 60 + s >= 5) tSet(m * 60 + s); };
+  const custom = () => {
+    const m = Math.min(240, Math.max(0, parseInt($('#tMin').value, 10) || 0)), s = Math.min(59, Math.max(0, parseInt($('#tSec').value, 10) || 0));
+    if (m * 60 + s >= 5) tSet(m * 60 + s); else toast('Shortest timer is 5 seconds.');
+    $('#tMin').value = String(Math.floor(T.total / 60)); $('#tSec').value = pad(T.total % 60);
+  };
   $('#tMin').addEventListener('change', custom); $('#tSec').addEventListener('change', custom);
   $('#tRounds').addEventListener('change', e => { T.rounds = Number(e.target.value); if (T.round > T.rounds) T.round = T.rounds; saveTimer(); renderTimer(); });
   $('#tRest').addEventListener('change', e => { T.rest = Number(e.target.value); saveTimer(); renderTimer(); });
